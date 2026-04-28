@@ -10,15 +10,17 @@ class Medidor extends Model
 {
     protected $table = 'medidores';
     protected $primaryKey = 'id_medidor';
-    public $timestamps = false;
 
     protected $fillable = [
-        'numero_medidor',
-        'marca',
-        'modelo',
+        'numero_serie',
         'fecha_instalacion',
         'estado',
         'id_socio',
+        'id_empleado_instalador',
+    ];
+
+    protected $casts = [
+        'fecha_instalacion' => 'date',
     ];
 
     public function socio(): BelongsTo

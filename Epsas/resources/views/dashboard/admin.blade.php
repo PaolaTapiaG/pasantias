@@ -1,232 +1,192 @@
 @extends('layouts.app')
 
-@section('title', 'Panel Administrador - EPSAS')
+@section('title', 'Panel administrador - EPSAS')
 
 @section('content')
-<div class="flex h-screen bg-gray-50">
-    <!-- Sidebar Admin -->
-    @include('slideboard.slidebaradmin')
+@php
+    $dashboardStats = \Illuminate\Support\Facades\Cache::remember('dashboard.admin.stats', now()->addMinutes(10), function () {
+        return [
+            'users' => \App\Models\User::count(),
+            'roles' => \App\Models\Role::count(),
+            'permissions' => \App\Models\Permission::count(),
+        ];
+    });
 
-    <!-- Main Content -->
-    <div class="flex-1 md:ml-64 flex flex-col min-h-screen">
-        <!-- Top Navbar -->
-        <header class="bg-white shadow-sm border-b border-gray-200">
-            <div class="flex items-center justify-between h-16 px-6">
-                <h1 class="text-2xl font-bold text-gray-900">Panel Administrador</h1>
-                <div class="flex items-center space-x-4">
-                    <button class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+    $stats = [
+        [
+            'label' => 'Usuarios',
+            'value' => $dashboardStats['users'],
+            'tone' => 'blue',
+            'detail' => 'Cuentas activas registradas',
+        ],
+        [
+            'label' => 'Roles',
+            'value' => $dashboardStats['roles'],
+            'tone' => 'violet',
+            'detail' => 'Perfiles del sistema',
+        ],
+        [
+            'label' => 'Permisos',
+            'value' => $dashboardStats['permissions'],
+            'tone' => 'emerald',
+            'detail' => 'Accesos configurados',
+        ],
+        [
+            'label' => 'Estado',
+            'value' => 'En linea',
+            'tone' => 'amber',
+            'detail' => 'Sistema operativo correctamente',
+        ],
+    ];
+
+    $cards = [
+        [
+            'title' => 'Gestion de usuarios',
+            'description' => 'Administra cuentas, accesos y estado de los usuarios del sistema.',
+            'items' => ['Crear usuarios', 'Editar perfiles', 'Restablecer contrasenas'],
+            'route' => 'admin.usuarios.index',
+            'tone' => 'blue',
+        ],
+        [
+            'title' => 'Roles y permisos',
+            'description' => 'Define perfiles de acceso y permisos segun responsabilidades.',
+            'items' => ['Asignar roles', 'Controlar permisos', 'Auditar accesos'],
+            'route' => 'admin.permisos.index',
+            'tone' => 'violet',
+        ],
+        [
+            'title' => 'Configuracion',
+            'description' => 'Ajusta parametros generales y opciones criticas del sistema.',
+            'items' => ['Parametros base', 'Tarifas', 'Respaldos'],
+            'route' => 'admin.configuracion.index',
+            'tone' => 'emerald',
+        ],
+        [
+            'title' => 'Auditoria',
+            'description' => 'Consulta actividad del sistema y revisa eventos importantes.',
+            'items' => ['Registro de cambios', 'Historial de accesos', 'Eventos de seguridad'],
+            'route' => 'admin.auditoria.index',
+            'tone' => 'amber',
+        ],
+    ];
+@endphp
+
+<div class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.15),_transparent_20%),linear-gradient(180deg,_#f8fbff_0%,_#eef4fb_100%)]">
+    @include('slideboard.sidebaradmin')
+
+    <div data-admin-main class="min-h-screen transition-[padding] duration-300 ease-out md:pl-72">
+        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+            <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        data-sidebar-toggle
+                        class="hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 md:flex"
+                        aria-label="Expandir o contraer sidebar"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" data-sidebar-toggle-icon class="h-5 w-5 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 6.75l4.5 5-4.5 5" />
                         </svg>
-                        <span class="absolute top-1 right-1 block w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
-                    <div class="w-1 h-8 bg-gray-200"></div>
-                    <div class="flex items-center">
-                        <img class="w-10 h-10 rounded-full" src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->name) }}&background=0D8ABC&color=fff" alt="Avatar">
-                        <span class="ml-3 text-sm font-medium text-gray-700">{{ Auth::user()->name }}</span>
+
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-blue-700">Administrador</p>
+                        <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Panel de control</h1>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                    <div class="hidden text-right sm:block">
+                        <p class="text-sm font-semibold text-slate-900">{{ $user->name }}</p>
+                        <p class="text-xs text-slate-500">{{ $user->email }}</p>
+                    </div>
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-sm font-bold text-blue-700">
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- Page Content -->
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             @if (session('success'))
-                <div class="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-start">
-                    <svg class="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                    </svg>
-                    <div>
-                        <p class="font-medium">¡Éxito!</p>
-                        <p class="text-sm">{{ session('success') }}</p>
-                    </div>
+                <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
+                    {{ session('success') }}
                 </div>
             @endif
 
-            <!-- Welcome Section -->
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-900">¡Bienvenido, {{ Auth::user()->name }}!</h2>
-                <p class="text-gray-600 mt-2">Panel de control del administrador del sistema</p>
-            </div>
+            <section class="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+                <div class="overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#245fbe_0%,#1b50aa_58%,#183f8a_100%)] px-6 py-8 text-white shadow-[0_24px_50px_rgba(25,80,170,0.25)] sm:px-8">
+                    <div class="max-w-3xl">
+                        <p class="text-sm font-medium uppercase tracking-[0.24em] text-blue-100/80">EPSAS</p>
+                        <h2 class="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+                            Bienvenido, {{ $user->name }}
+                        </h2>
+                        <p class="mt-4 max-w-2xl text-sm leading-7 text-blue-50/90 sm:text-base">
+                            Supervisa el sistema, controla usuarios y manten centralizada la operacion administrativa desde un panel moderno y ordenado.
+                        </p>
+                    </div>
+                </div>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Total Usuarios -->
-                <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500 hover:shadow-lg transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-600 text-sm font-medium">Total de Usuarios</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ \App\Models\User::count() }}</p>
-                            <p class="text-xs text-gray-500 mt-2">Usuarios activos en el sistema</p>
+                <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Acciones rapidas</h3>
+                    <div class="mt-5 grid gap-3">
+                        <a href="{{ route('admin.socios.index') }}" class="rounded-2xl bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100">
+                            Gestionar socios
+                        </a>
+                        <a href="{{ route('admin.usuarios.index') }}" class="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+                            Gestionar usuarios
+                        </a>
+                        <a href="{{ route('admin.permisos.index') }}" class="rounded-2xl bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100">
+                            Configurar roles y permisos
+                        </a>
+                        <a href="{{ route('admin.configuracion.index') }}" class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                            Revisar configuracion
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach ($stats as $stat)
+                    <article class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm font-medium text-slate-500">{{ $stat['label'] }}</p>
+                        <p class="mt-3 text-3xl font-bold text-slate-900">{{ $stat['value'] }}</p>
+                        <p class="mt-2 text-sm text-slate-500">{{ $stat['detail'] }}</p>
+                    </article>
+                @endforeach
+            </section>
+
+            <section class="mt-8 grid gap-6 xl:grid-cols-2">
+                @foreach ($cards as $card)
+                    <article class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-xl font-semibold text-slate-900">{{ $card['title'] }}</h3>
+                                <p class="mt-2 text-sm leading-7 text-slate-500">{{ $card['description'] }}</p>
+                            </div>
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                Admin
+                            </span>
                         </div>
-                        <div class="text-4xl text-blue-100">👥</div>
-                    </div>
-                </div>
 
-                <!-- Roles Activos -->
-                <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500 hover:shadow-lg transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-600 text-sm font-medium">Roles Activos</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ \App\Models\Role::count() }}</p>
-                            <p class="text-xs text-gray-500 mt-2">Roles definidos en el sistema</p>
-                        </div>
-                        <div class="text-4xl text-purple-100">🔐</div>
-                    </div>
-                </div>
-
-                <!-- Permisos -->
-                <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500 hover:shadow-lg transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-600 text-sm font-medium">Permisos Configurados</p>
-                            <p class="text-3xl font-bold text-gray-900 mt-2">{{ \App\Models\Permission::count() }}</p>
-                            <p class="text-xs text-gray-500 mt-2">Permisos en el sistema</p>
-                        </div>
-                        <div class="text-4xl text-green-100">✓</div>
-                    </div>
-                </div>
-
-                <!-- Última Actividad -->
-                <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500 hover:shadow-lg transition">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-gray-600 text-sm font-medium">Última Actividad</p>
-                            <p class="text-2xl font-bold text-gray-900 mt-2">Ahora</p>
-                            <p class="text-xs text-gray-500 mt-2">Actualizado en tiempo real</p>
-                        </div>
-                        <div class="text-4xl text-yellow-100">📊</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Management Panels -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- User Management Panel -->
-                <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition">
-                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">👥 Gestión de Usuarios</h3>
-                    </div>
-                    <div class="p-6">
-                        <ul class="space-y-3">
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-blue-500 mr-3">✓</span>
-                                Crear y editar usuarios
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-blue-500 mr-3">✓</span>
-                                Asignar y revocar roles
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-blue-500 mr-3">✓</span>
-                                Resetear contraseñas
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-blue-500 mr-3">✓</span>
-                                Desactivar/reactivar cuentas
-                            </li>
+                        <ul class="mt-5 space-y-3 text-sm text-slate-600">
+                            @foreach ($card['items'] as $item)
+                                <li class="flex items-center gap-3">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                    <span>{{ $item }}</span>
+                                </li>
+                            @endforeach
                         </ul>
-                        <button class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">
-                            Ir a Usuarios
-                        </button>
-                    </div>
-                </div>
 
-                <!-- System Configuration Panel -->
-                <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition">
-                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">⚙️ Configuración del Sistema</h3>
-                    </div>
-                    <div class="p-6">
-                        <ul class="space-y-3">
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-purple-500 mr-3">✓</span>
-                                Parámetros generales del sistema
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-purple-500 mr-3">✓</span>
-                                Tarifas y valores
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-purple-500 mr-3">✓</span>
-                                Respaldos de base de datos
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-purple-500 mr-3">✓</span>
-                                Logs y auditoría
-                            </li>
-                        </ul>
-                        <button class="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-lg transition">
-                            Ir a Configuración
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Audit Panel -->
-                <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition">
-                    <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">📋 Auditoría del Sistema</h3>
-                    </div>
-                    <div class="p-6">
-                        <ul class="space-y-3">
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-red-500 mr-3">✓</span>
-                                Registro de cambios
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-red-500 mr-3">✓</span>
-                                Historial de accesos
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-red-500 mr-3">✓</span>
-                                Errores del sistema
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-red-500 mr-3">✓</span>
-                                Reportes de seguridad
-                            </li>
-                        </ul>
-                        <button class="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition">
-                            Ver Auditoría
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Permissions Panel -->
-                <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition">
-                    <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
-                        <h3 class="text-lg font-bold text-white">🔒 Roles y Permisos</h3>
-                    </div>
-                    <div class="p-6">
-                        <ul class="space-y-3">
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-green-500 mr-3">✓</span>
-                                Crear y editar roles
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-green-500 mr-3">✓</span>
-                                Asignar permisos a roles
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-green-500 mr-3">✓</span>
-                                Permisos personalizados
-                            </li>
-                            <li class="flex items-center text-gray-700">
-                                <span class="text-green-500 mr-3">✓</span>
-                                Exportar configuración
-                            </li>
-                        </ul>
-                        <button class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition">
-                            Ir a Permisos
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="mt-12 text-center text-gray-500 text-sm border-t border-gray-200 pt-6">
-                <p>© 2026 EPSAS - Sistema de Gestión de Agua. Todos los derechos reservados.</p>
-            </div>
+                        <a
+                            href="{{ route($card['route']) }}"
+                            class="mt-6 inline-flex items-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                            Abrir modulo
+                        </a>
+                    </article>
+                @endforeach
+            </section>
         </main>
     </div>
 </div>

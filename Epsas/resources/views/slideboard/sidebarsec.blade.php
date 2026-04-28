@@ -29,7 +29,7 @@
         </div>
 
         <!-- Socios -->
-        <a href="#" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
+        <a href="{{ route('admin.socios.index') }}" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
             <svg class="w-5 h-5 mr-3 group-hover:text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v2h8v-2zM16 15a3 3 0 00-3-3H9a3 3 0 00-3 3v2h10v-2z"/>
             </svg>
@@ -37,7 +37,7 @@
         </a>
 
         <!-- Facturas -->
-        <a href="#" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
+        <a href="{{ route('secretaria.facturas.index') }}" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
             <svg class="w-5 h-5 mr-3 group-hover:text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
             </svg>
@@ -45,7 +45,7 @@
         </a>
 
         <!-- Cobros -->
-        <a href="#" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
+        <a href="{{ route('secretaria.cobros.index') }}" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
             <svg class="w-5 h-5 mr-3 group-hover:text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M8.16 2.75a.75.75 0 00-1.32 0l-.83 2.47a.75.75 0 01-.576.548l-2.569.274a.75.75 0 00-.416 1.279l1.867 1.82a.75.75 0 01.215.816l-.441 2.57a.75.75 0 001.088.791l2.298-1.209a.75.75 0 01.659 0l2.298 1.209a.75.75 0 001.088-.79l-.441-2.573a.75.75 0 01.215-.816l1.867-1.82a.75.75 0 00-.416-1.28l-2.57-.274a.75.75 0 01-.575-.548l-.83-2.47z"/>
             </svg>
@@ -53,7 +53,7 @@
         </a>
 
         <!-- Historial de Pagos -->
-        <a href="#" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
+        <a href="{{ route('secretaria.reportes.index') }}" class="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition group">
             <svg class="w-5 h-5 mr-3 group-hover:text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
             </svg>

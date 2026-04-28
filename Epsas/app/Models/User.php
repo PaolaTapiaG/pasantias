@@ -4,10 +4,12 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Cache;
 
 class User extends Authenticatable
 {
@@ -22,7 +24,9 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'id_persona',
         'password',
+        'must_change_password',
     ];
 
     /**
@@ -45,7 +49,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
+    }
+
+    public function persona(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class, 'id_persona', 'id_persona');
     }
 
     /**
@@ -61,7 +71,7 @@ class User extends Authenticatable
      */
     public function hasRole(string $role): bool
     {
-        return $this->roles()->where('name', $role)->exists();
+        return $this->cachedRoleNames()->contains($role);
     }
 
     /**
@@ -72,7 +82,8 @@ class User extends Authenticatable
         if (is_string($roles)) {
             $roles = [$roles];
         }
-        return $this->roles()->whereIn('name', $roles)->exists();
+
+        return $this->cachedRoleNames()->intersect($roles)->isNotEmpty();
     }
 
     /**
@@ -83,7 +94,8 @@ class User extends Authenticatable
         if (is_string($roles)) {
             $roles = [$roles];
         }
-        return $this->roles()->whereIn('name', $roles)->count() === count($roles);
+
+        return $this->cachedRoleNames()->intersect($roles)->count() === count($roles);
     }
 
     /**
@@ -105,7 +117,8 @@ class User extends Authenticatable
         if (is_string($role)) {
             $role = Role::where('name', $role)->firstOrFail();
         }
-        if (!$this->roles()->where('id', $role->id)->exists()) {
+
+        if (!$this->roles()->where('user_roles.id', $role->id)->exists()) {
             $this->roles()->attach($role);
         }
     }
@@ -119,5 +132,14 @@ class User extends Authenticatable
             $role = Role::where('name', $role)->firstOrFail();
         }
         $this->roles()->detach($role);
+    }
+
+    public function cachedRoleNames()
+    {
+        return Cache::remember(
+            "user:{$this->getKey()}:role-names",
+            now()->addMinutes(10),
+            fn() => $this->roles()->pluck('name')
+        );
     }
 }

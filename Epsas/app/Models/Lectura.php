@@ -10,14 +10,23 @@ class Lectura extends Model
 {
     protected $table = 'lecturas';
     protected $primaryKey = 'id_lectura';
-    public $timestamps = false;
 
     protected $fillable = [
         'fecha_lectura',
-        'valor_lectura',
-        'consumo',
+        'lectura_anterior',
+        'lectura_actual',
+        'observaciones',
         'id_medidor',
-        'id_factura',
+        'id_empleado',
+    ];
+
+    protected $casts = [
+        'fecha_lectura' => 'date',
+        'lectura_anterior' => 'decimal:2',
+        'lectura_actual' => 'decimal:2',
+        'consumo_m3' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function medidor(): BelongsTo
@@ -25,13 +34,13 @@ class Lectura extends Model
         return $this->belongsTo(Medidor::class, 'id_medidor', 'id_medidor');
     }
 
-    public function factura(): BelongsTo
-    {
-        return $this->belongsTo(Factura::class, 'id_factura', 'id_factura');
-    }
-
     public function empleado(): BelongsTo
     {
         return $this->belongsTo(Empleado::class, 'id_empleado', 'id_empleado');
+    }
+
+    public function facturas(): HasMany
+    {
+        return $this->hasMany(Factura::class, 'id_lectura', 'id_lectura');
     }
 }

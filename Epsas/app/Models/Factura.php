@@ -10,17 +10,36 @@ class Factura extends Model
 {
     protected $table = 'facturas';
     protected $primaryKey = 'id_factura';
-    public $timestamps = false;
 
     protected $fillable = [
         'numero_factura',
         'fecha_emision',
-        'fecha_vencimiento',
-        'total',
-        'estado',
         'fecha_pago',
+        'consumo_m3',
+        'monto_consumo',
+        'cargo_fijo',
+        'recargo_mora',
+        'descuentos',
+        'precio_m3_aplicado',
+        'cargo_fijo_aplicado',
+        'estado',
         'id_socio',
+        'id_lectura',
         'id_periodo',
+    ];
+
+    protected $casts = [
+        'fecha_emision' => 'date',
+        'fecha_pago' => 'date',
+        'consumo_m3' => 'decimal:2',
+        'monto_consumo' => 'decimal:2',
+        'cargo_fijo' => 'decimal:2',
+        'recargo_mora' => 'decimal:2',
+        'descuentos' => 'decimal:2',
+        'precio_m3_aplicado' => 'decimal:4',
+        'cargo_fijo_aplicado' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function socio(): BelongsTo
@@ -28,13 +47,18 @@ class Factura extends Model
         return $this->belongsTo(Socio::class, 'id_socio', 'id_socio');
     }
 
+    public function periodo(): BelongsTo
+    {
+        return $this->belongsTo(PeriodoFacturacion::class, 'id_periodo', 'id_periodo');
+    }
+
+    public function lectura(): BelongsTo
+    {
+        return $this->belongsTo(Lectura::class, 'id_lectura', 'id_lectura');
+    }
+
     public function cobros(): HasMany
     {
         return $this->hasMany(Cobro::class, 'id_factura', 'id_factura');
-    }
-
-    public function lecturas(): HasMany
-    {
-        return $this->hasMany(Lectura::class, 'id_factura', 'id_factura');
     }
 }

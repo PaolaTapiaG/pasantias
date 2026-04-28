@@ -5,7 +5,7 @@
 @section('content')
 <div class="flex h-screen bg-gray-50">
     <!-- Sidebar Tecnico -->
-    @include('slideboard.slidebartec')
+    @include('slideboard.sidebartec')
 
     <!-- Main Content -->
     <div class="flex-1 md:ml-64 flex flex-col min-h-screen">

@@ -12,6 +12,7 @@ class Tarifa extends Model
 
     protected $fillable = [
         'nombre',
+        'tipo_uso',
         'precio_m3_base',
         'consumo_minimo_m3',
         'cargo_fijo',

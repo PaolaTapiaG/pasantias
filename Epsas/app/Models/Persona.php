@@ -16,12 +16,27 @@ class Persona extends Model
         'cedula_identidad',
         'telefono',
         'email',
+        'fecha_nacimiento',
+        'foto_path',
+    ];
+
+    protected $casts = [
+        'fecha_nacimiento' => 'date',
     ];
 
     // ── Accessors ──────────────────────────────
     public function getNombreCompletoAttribute(): string
     {
         return "{$this->nombres} {$this->apellidos}";
+    }
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        if (!$this->foto_path) {
+            return null;
+        }
+
+        return asset($this->foto_path);
     }
 
     // ── Relaciones ─────────────────────────────

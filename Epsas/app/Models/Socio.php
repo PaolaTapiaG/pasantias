@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Socio extends Model
 {
-    protected $table      = 'socios';
+    protected $table = 'socios';
     protected $primaryKey = 'id_socio';
 
     protected $fillable = [
@@ -17,6 +17,10 @@ class Socio extends Model
         'direccion',
         'fecha_registro',
         'estado',
+        'oculto',
+        'motivo_ocultacion',
+        'oculto_en',
+        'oculto_por',
         'id_persona',
         'id_sector',
         'id_tarifa',
@@ -24,9 +28,10 @@ class Socio extends Model
 
     protected $casts = [
         'fecha_registro' => 'date',
+        'oculto' => 'boolean',
+        'oculto_en' => 'datetime',
     ];
 
-    // ── Scopes ─────────────────────────────────
     public function scopeActivos($query)
     {
         return $query->where('estado', 'activo');
@@ -42,13 +47,25 @@ class Socio extends Model
         return $query->where('id_sector', $idSector);
     }
 
-    // ── Accessors ──────────────────────────────
-    public function getNombreCompletoAttribute(): string
+    public function scopeVisibles($query)
     {
-        return $this->persona?->nombre_completo ?? '—';
+        return $query->where('oculto', false);
     }
 
-    // ── Relaciones ─────────────────────────────
+    public function getNombreCompletoAttribute(): string
+    {
+        return $this->persona?->nombre_completo ?? '-';
+    }
+
+    public function getCodigoDisplayAttribute(): string
+    {
+        if (!empty($this->numero_socio)) {
+            return $this->numero_socio;
+        }
+
+        return 'SOC-' . str_pad((string) $this->id_socio, 4, '0', STR_PAD_LEFT);
+    }
+
     public function persona(): BelongsTo
     {
         return $this->belongsTo(Persona::class, 'id_persona', 'id_persona');
@@ -64,14 +81,12 @@ class Socio extends Model
         return $this->belongsTo(Tarifa::class, 'id_tarifa', 'id_tarifa');
     }
 
-    /** Medidor actualmente activo. */
     public function medidorActivo(): HasOne
     {
         return $this->hasOne(Medidor::class, 'id_socio', 'id_socio')
-                    ->where('estado', 'activo');
+            ->where('estado', 'activo');
     }
 
-    /** Todos los medidores (historial). */
     public function medidores(): HasMany
     {
         return $this->hasMany(Medidor::class, 'id_socio', 'id_socio');
@@ -85,7 +100,7 @@ class Socio extends Model
     public function facturasPendientes(): HasMany
     {
         return $this->hasMany(Factura::class, 'id_socio', 'id_socio')
-                    ->whereIn('estado', ['pendiente', 'vencida', 'parcial']);
+            ->whereIn('estado', ['pendiente', 'vencida', 'parcial']);
     }
 
     public function historialPagos(): HasMany

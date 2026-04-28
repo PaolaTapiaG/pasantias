@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PeriodoFacturacion extends Model
 {
     use HasFactory;
 
-    protected $table = 'periodos_fabricacion'; // nombre exacto del diagrama
+    protected $table = 'periodos_facturacion';
     protected $primaryKey = 'id_periodo';
 
     protected $fillable = [
@@ -21,24 +22,16 @@ class PeriodoFacturacion extends Model
 
     protected $casts = [
         'fecha_inicio' => 'date',
-        'fecha_fin'    => 'date',
-        'cerrado'      => 'boolean',
-        'creado_en'    => 'datetime',
+        'fecha_fin' => 'date',
+        'cerrado' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
-    // ─── Relaciones ───────────────────────────────────────────────
-
-    public function lecturas()
+    public function facturas(): HasMany
     {
-        return $this->hasMany(Lectura::class, 'id_periodo');
+        return $this->hasMany(Factura::class, 'id_periodo', 'id_periodo');
     }
-
-    public function facturas()
-    {
-        return $this->hasMany(Factura::class, 'id_periodo');
-    }
-
-    // ─── Scopes ───────────────────────────────────────────────────
 
     public function scopeAbiertos($query)
     {
@@ -48,17 +41,5 @@ class PeriodoFacturacion extends Model
     public function scopeCerrados($query)
     {
         return $query->where('cerrado', true);
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────────
-
-    public function cerrar(): void
-    {
-        $this->update(['cerrado' => true]);
-    }
-
-    public function estaAbierto(): bool
-    {
-        return ! $this->cerrado;
     }
 }

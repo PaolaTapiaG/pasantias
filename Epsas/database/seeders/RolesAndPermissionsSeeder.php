@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Role;
-use App\Models\Permission;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -14,12 +12,33 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Crear roles usando insert directo
-        DB::table('user_roles')->insert([
-            ['name' => 'administrador', 'description' => 'Acceso total al sistema', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'secretaria', 'description' => 'Puede gestionar facturas y cobros', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'tecnico', 'description' => 'Puede registrar lecturas y medidores', 'created_at' => now(), 'updated_at' => now()],
-        ]);
+        $now = now();
+
+        $roles = [
+            ['name' => 'administrador', 'description' => 'Acceso total al sistema'],
+            ['name' => 'secretaria', 'description' => 'Puede gestionar facturas y cobros'],
+            ['name' => 'tecnico', 'description' => 'Puede registrar lecturas y medidores'],
+        ];
+
+        foreach ($roles as $role) {
+            $existingRole = DB::table('user_roles')->where('name', $role['name'])->value('id');
+
+            if ($existingRole) {
+                DB::table('user_roles')
+                    ->where('id', $existingRole)
+                    ->update([
+                        'description' => $role['description'],
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('user_roles')->insert([
+                    'name' => $role['name'],
+                    'description' => $role['description'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
 
         // Crear permisos
         $permissions = [
@@ -69,16 +88,29 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            DB::table('user_permissions')->insert(array_merge($permission, [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]));
+            $existingPermission = DB::table('user_permissions')->where('name', $permission['name'])->value('id');
+
+            if ($existingPermission) {
+                DB::table('user_permissions')
+                    ->where('id', $existingPermission)
+                    ->update([
+                        'description' => $permission['description'],
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('user_permissions')->insert([
+                    'name' => $permission['name'],
+                    'description' => $permission['description'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
         }
 
         // Obtener IDs de roles
-        $adminRoleId = DB::table('user_roles')->where('name', 'administrador')->first()->id;
-        $secretariaRoleId = DB::table('user_roles')->where('name', 'secretaria')->first()->id;
-        $tecnicoRoleId = DB::table('user_roles')->where('name', 'tecnico')->first()->id;
+        $adminRoleId = DB::table('user_roles')->where('name', 'administrador')->value('id');
+        $secretariaRoleId = DB::table('user_roles')->where('name', 'secretaria')->value('id');
+        $tecnicoRoleId = DB::table('user_roles')->where('name', 'tecnico')->value('id');
 
         // Obtener IDs de permisos
         $allPermissions = DB::table('user_permissions')->get();
@@ -106,32 +138,40 @@ class RolesAndPermissionsSeeder extends Seeder
         // Asignar permisos a roles
         // Admin: todos los permisos
         foreach ($allPermissions as $perm) {
-            DB::table('permission_role')->insert([
-                'user_permissions_id' => $perm->id,
-                'user_roles_id' => $adminRoleId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $this->syncPermissionRole($perm->id, $adminRoleId, $now);
         }
 
         // Secretaria
         foreach ($secretariaPerms as $perm) {
-            DB::table('permission_role')->insert([
-                'user_permissions_id' => $perm->id,
-                'user_roles_id' => $secretariaRoleId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $this->syncPermissionRole($perm->id, $secretariaRoleId, $now);
         }
 
         // Tecnico
         foreach ($tecnicoPerms as $perm) {
-            DB::table('permission_role')->insert([
-                'user_permissions_id' => $perm->id,
-                'user_roles_id' => $tecnicoRoleId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $this->syncPermissionRole($perm->id, $tecnicoRoleId, $now);
         }
+    }
+
+    private function syncPermissionRole(int $permissionId, int $roleId, $now): void
+    {
+        $existingId = DB::table('permission_role')
+            ->where('user_permissions_id', $permissionId)
+            ->where('user_roles_id', $roleId)
+            ->value('id');
+
+        if ($existingId) {
+            DB::table('permission_role')
+                ->where('id', $existingId)
+                ->update(['updated_at' => $now]);
+
+            return;
+        }
+
+        DB::table('permission_role')->insert([
+            'user_permissions_id' => $permissionId,
+            'user_roles_id' => $roleId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 }

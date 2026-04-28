@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Empleado extends Model
 {
@@ -49,6 +50,18 @@ class Empleado extends Model
     public function medidoresInstalados()
     {
         return $this->hasMany(Medidor::class, 'id_empleado_instalador');
+    }
+
+    public function user(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            User::class,
+            Persona::class,
+            'id_persona',
+            'id_persona',
+            'id_persona',
+            'id_persona'
+        );
     }
 
     // ─── Scopes ───────────────────────────────────────────────────
