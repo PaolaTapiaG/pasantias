@@ -1,0 +1,102 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+body.app-shell {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+html.dark body.app-shell {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+
+.page-background {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+:root:not(.dark) [data-admin-main] > header,
+:root:not(.dark) [data-sidebar-main] > header,
+:root:not(.dark) [data-tech-main] > header {
+    background: #ffffff !important;
+}
+
+html.dark .page-background {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%) !important;
+}
+
+.theme-soft {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+.theme-soft::placeholder {
+    color: #64748b !important;
+}
+
+label,
+.theme-card label {
+    color: #0f172a !important;
+}
+
+.theme-card input,
+.theme-card textarea,
+.theme-card select {
+    color: #0f172a !important;
+}
+
+.theme-card input:disabled,
+.theme-card textarea:disabled,
+.theme-card select:disabled,
+.theme-card button:disabled {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    opacity: 1 !important;
+}
+
+html.dark .theme-card {
+    background: rgba(15, 23, 42, 0.88) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html.dark .theme-soft {
+    background: rgba(30, 41, 59, 0.75) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html.dark label,
+html.dark .theme-card label {
+    color: #e2e8f0 !important;
+}
+
+html.dark .theme-card input,
+html.dark .theme-card textarea,
+html.dark .theme-card select {
+    color: #e2e8f0 !important;
+}
+
+html.dark .theme-text {
+    color: #e2e8f0 !important;
+}
+
+html.dark .theme-muted {
+    color: #94a3b8 !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+    color-scheme: dark;
+}
