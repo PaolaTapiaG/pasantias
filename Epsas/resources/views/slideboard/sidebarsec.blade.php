@@ -4,9 +4,11 @@
 
     $secretariaNav = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'match' => ['dashboard'], 'icon' => 'dashboard'],
-        ['label' => 'Registrar pagos', 'route' => 'secretaria.cobros.index', 'match' => ['secretaria.cobros.*', 'secretaria.ordenes-pago.*'], 'icon' => 'receipt'],
-        ['label' => 'Facturaciones', 'route' => 'secretaria.facturas.index', 'match' => ['secretaria.facturas.*'], 'icon' => 'invoice'],
+        ['label' => 'Atencion de caja', 'route' => 'secretaria.operaciones.index', 'match' => ['secretaria.operaciones.*', 'secretaria.cobros.*', 'secretaria.facturas.*'], 'icon' => 'receipt'],
+        ['label' => 'Lecturaciones', 'route' => 'tecnico.lecturas.index', 'match' => ['tecnico.lecturas.*'], 'icon' => 'receipt'],
+        ['label' => 'Pagos QR', 'route' => 'secretaria.ordenes-pago.index', 'match' => ['secretaria.ordenes-pago.*'], 'icon' => 'invoice'],
         ['label' => 'Socios', 'route' => 'admin.socios.index', 'match' => ['admin.socios.*'], 'icon' => 'contacts'],
+        ['label' => 'Mapa operativo', 'route' => 'mapa-operativo.index', 'match' => ['mapa-operativo.*'], 'icon' => 'map'],
         ['label' => 'Reportes ingresos', 'route' => 'secretaria.reportes.index', 'match' => ['secretaria.reportes.*'], 'icon' => 'chart'],
         ['label' => 'Mi perfil', 'route' => 'secretaria.perfil.index', 'match' => ['secretaria.perfil.*'], 'icon' => 'profile'],
     ];
@@ -16,18 +18,20 @@
         'contacts' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 5.75h12.5v12.5H5.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1.75 1.75 0 113.5 0A1.75 1.75 0 019 10zm5.25 5.25a3.75 3.75 0 00-7.5 0" />',
         'invoice' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.75 3.75h6.5l3 3v10.5a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 016.25 17.25v-12A1.5 1.5 0 017.75 3.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 3.75v3h3M9 10h6M9 13h6M9 16h3" />',
         'receipt' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.75h9a1.75 1.75 0 011.75 1.75v10.75l-2.25-1.5-2.25 1.5-2.25-1.5-2.25 1.5-2.25-1.5-2.25 1.5V6.5A1.75 1.75 0 017.5 4.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.5h6M9 11.5h6M9 14.5h3" />',
+        'operations' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.5 5.75h13v12.5h-13zM8.5 9h7M8.5 12h7M8.5 15h4" />',
         'chart' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 18.25V5.75m0 12.5h12.5M9 15.75v-4.5m3 4.5v-7m3 7v-9.5" />',
+        'map' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 5.75l4.5-1.5 4.5 1.5 3.5-1.25v13.75l-3.5 1.25-4.5-1.5-4.5 1.5V5.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.25 4.25v13.75M14.75 5.75V19.5" />',
         'profile' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.25a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM5.75 19.25a6.25 6.25 0 0112.5 0" />',
         'logout' => '<path stroke-linecap="round" stroke-linejoin="round" d="M10.75 4.75H7A2.25 2.25 0 004.75 7v10A2.25 2.25 0 007 19.25h3.75" /><path stroke-linecap="round" stroke-linejoin="round" d="M14 15.25l3.5-3.5-3.5-3.5M17.25 11.75h-8.5" />',
     ];
 @endphp
 
-<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-emerald-950/45 backdrop-blur-sm md:hidden"></div>
+<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-emerald-950/45 backdrop-blur-sm lg:hidden"></div>
 
 <button
     type="button"
     data-sidebar-open
-    class="fixed left-4 top-4 z-[72] flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-emerald-700 text-white shadow-[0_18px_35px_rgba(6,95,70,0.28)] backdrop-blur-sm md:hidden"
+    class="fixed left-4 top-4 z-[72] flex h-11 w-11 items-center justify-center rounded-2xl border border-white/30 bg-emerald-700 text-white shadow-[0_18px_35px_rgba(6,95,70,0.28)] backdrop-blur-sm lg:hidden"
     aria-label="Abrir menu secretaria"
 >
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -37,7 +41,7 @@
 
 <aside
     data-secretaria-sidebar
-    class="fixed inset-y-0 left-0 z-50 flex h-screen w-72 -translate-x-full flex-col overflow-hidden border-r border-emerald-100/20 bg-[linear-gradient(180deg,#0f9f6e_0%,#047857_48%,#064e3b_100%)] text-white shadow-2xl transition duration-300 ease-out md:z-40 md:translate-x-0"
+    class="fixed inset-y-0 left-0 z-50 flex h-screen w-72 -translate-x-full flex-col overflow-hidden border-r border-emerald-100/20 bg-[linear-gradient(180deg,#0f9f6e_0%,#047857_48%,#064e3b_100%)] text-white shadow-2xl transition duration-300 ease-out lg:z-40 lg:translate-x-0"
 >
     <div class="flex h-full w-full flex-col px-4 py-5">
         <div data-sidebar-header class="flex items-center justify-between gap-3 px-2">
@@ -71,7 +75,7 @@
             <button
                 type="button"
                 data-sidebar-close
-                class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white md:hidden"
+                class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white lg:hidden"
                 aria-label="Cerrar menu"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">

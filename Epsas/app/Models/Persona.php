@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Persona extends Model
 {
+    use CachesOperationalRouteBinding;
+
     protected $table      = 'personas';
     protected $primaryKey = 'id_persona';
 
@@ -42,15 +44,7 @@ class Persona extends Model
             return $this->foto_path;
         }
 
-        if (Str::startsWith($this->foto_path, 'storage/')) {
-            return asset($this->foto_path);
-        }
-
-        if (Str::startsWith($this->foto_path, 'uploads/')) {
-            return asset($this->foto_path);
-        }
-
-        return Storage::disk('public')->url($this->foto_path);
+        return route('private-media.persona-photo', $this);
     }
 
     // ── Relaciones ─────────────────────────────

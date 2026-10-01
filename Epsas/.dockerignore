@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.docker.example
+.git
+.gitignore
+node_modules
+vendor
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+storage/app/private
+storage/app/public
+bootstrap/cache/*.php
+public/hot
+.phpunit.result.cache

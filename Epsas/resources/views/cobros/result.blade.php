@@ -28,8 +28,8 @@
                         <p class="mt-2 text-sm text-slate-500">Ya puedes descargar o imprimir el recibo sin volver a la vista de facturacion.</p>
                     </div>
                     <div class="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                        <a href="{{ route('secretaria.cobros.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100">
-                            Volver a cobros
+                        <a href="{{ route('secretaria.operaciones.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100">
+                            Volver a atencion de caja
                         </a>
                         <a href="{{ route('secretaria.cobros.show', $paymentResult['socio_id']) }}" class="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700">
                             Registrar otro pago

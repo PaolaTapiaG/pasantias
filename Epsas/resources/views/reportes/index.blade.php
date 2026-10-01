@@ -2,18 +2,43 @@
 
 @section('title', 'Reportes - EPSAS')
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-    const chartConfig = {
-        ingresos: '#ff7a1a',
-        egresos: '#475569',
-        primary: '#0ea5e9',
-        success: '#10b981',
-        danger: '#ef4444'
-    };
-</script>
-@endpush
+@php
+    $financeChartRows = collect($financeBars ?? []);
+    $expenseChartRows = collect($expenseSegments ?? []);
+
+    $financeChart = [
+        'type' => 'bar',
+        'theme' => 'orange',
+        'value' => 'currency',
+        'labels' => $financeChartRows->pluck('label')->values(),
+        'datasets' => [
+            [
+                'label' => 'Ingresos',
+                'data' => $financeChartRows->pluck('ingresos')->map(fn ($value) => (float) $value)->values(),
+                'backgroundColor' => '#ff7a1a',
+                'borderColor' => '#ff7a1a',
+            ],
+            [
+                'label' => 'Egresos',
+                'data' => $financeChartRows->pluck('egresos')->map(fn ($value) => (float) $value)->values(),
+                'backgroundColor' => '#475569',
+                'borderColor' => '#475569',
+            ],
+        ],
+    ];
+
+    $expenseChart = [
+        'type' => 'doughnut',
+        'theme' => 'orange',
+        'value' => 'percent',
+        'labels' => $expenseChartRows->pluck('categoria')->values(),
+        'datasets' => [[
+            'label' => 'Gastos',
+            'data' => $expenseChartRows->pluck('percent')->map(fn ($value) => (float) $value)->values(),
+            'backgroundColor' => $expenseChartRows->pluck('color')->values(),
+        ]],
+    ];
+@endphp
 
 @section('content')
 <div class="page-background min-h-screen">
@@ -30,9 +55,8 @@
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Acciones de reportes</p>
-                        <p class="mt-1 text-sm text-slate-500">Registra egresos desde aqui y manten el reporte financiero actualizado.</p>
+                        <p class="mt-1 text-sm text-slate-500">Consulta ingresos, egresos y tendencias sin mezclar registro operativo de gastos.</p>
                     </div>
-                    <a href="{{ route('admin.gastos.index') }}" class="inline-flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 sm:w-auto">Registrar gasto</a>
                 </div>
             </section>
 
@@ -53,7 +77,7 @@
             <section class="mt-6 grid gap-4 md:grid-cols-5">
                 <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Ingresos</p><p class="theme-text mt-3 text-3xl font-bold text-slate-900">Bs {{ number_format((float) $resumen['recaudado'], 2) }}</p></article>
                 <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Egresos</p><p class="mt-3 text-3xl font-bold text-amber-600">Bs {{ number_format((float) $resumen['egresos'], 2) }}</p></article>
-                <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Cobros</p><p class="theme-text mt-3 text-3xl font-bold text-slate-900">{{ $resumen['cobros'] }}</p></article>
+                <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Movimientos</p><p class="theme-text mt-3 text-3xl font-bold text-slate-900">{{ $resumen['cobros'] }}</p></article>
                 <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Consumo facturado</p><p class="theme-text mt-3 text-3xl font-bold text-slate-900">{{ number_format((float) $resumen['consumo_m3'], 2) }} m3</p></article>
                 <article class="theme-card rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm"><p class="theme-muted text-sm text-slate-500">Saldo moroso</p><p class="mt-3 text-3xl font-bold text-rose-600">Bs {{ number_format((float) $resumen['saldo_moroso'], 2) }}</p></article>
             </section>
@@ -81,9 +105,9 @@
                 <article class="theme-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <h2 class="theme-text text-xl font-semibold text-slate-900">Flujo financiero</h2>
                     <p class="theme-muted mt-2 text-sm text-slate-500">Comparativo de ingresos y egresos por fecha.</p>
-                    <div class="mt-6">
+                    <div class="mt-6 h-80">
                         @if ($financeBars->isNotEmpty())
-                            <canvas id="financeChart" height="80"></canvas>
+                            <canvas id="financeChart" data-epsas-chart='@json($financeChart)'></canvas>
                         @else
                             <div class="rounded-3xl border border-dashed border-slate-200 px-6 py-20 text-center text-sm text-slate-500">No hay ingresos ni egresos en este rango.</div>
                         @endif
@@ -93,7 +117,9 @@
                     <h2 class="theme-text text-xl font-semibold text-slate-900">Distribucion de gastos</h2>
                     <p class="theme-muted mt-2 text-sm text-slate-500">Categorias registradas dentro del rango seleccionado.</p>
                     <div class="mt-6 flex flex-col items-center gap-6">
-                        <canvas id="expenseChart" height="100"></canvas>
+                        <div class="h-72 w-full">
+                            <canvas id="expenseChart" data-epsas-chart='@json($expenseChart)'></canvas>
+                        </div>
                         <div class="w-full space-y-3">
                             @foreach ($expenseSegments as $segment)
                                 <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
@@ -192,149 +218,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gráfico de Flujo Financiero
-        const financeCtx = document.getElementById('financeChart');
-        if (financeCtx) {
-            const financeBars = @json($financeBars);
-            
-            new Chart(financeCtx, {
-                type: 'bar',
-                data: {
-                    labels: financeBars.map(b => b.label),
-                    datasets: [
-                        {
-                            label: 'Ingresos',
-                            data: financeBars.map(b => b.ingresos),
-                            backgroundColor: '#ff7a1a',
-                            borderColor: '#ff7a1a',
-                            borderRadius: 6,
-                            borderSkipped: false,
-                            barThickness: 'flex',
-                            maxBarThickness: 12
-                        },
-                        {
-                            label: 'Egresos',
-                            data: financeBars.map(b => b.egresos),
-                            backgroundColor: '#475569',
-                            borderColor: '#475569',
-                            borderRadius: 6,
-                            borderSkipped: false,
-                            barThickness: 'flex',
-                            maxBarThickness: 12
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                font: { size: 12, weight: '600' },
-                                color: '#64748b',
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                            padding: 12,
-                            titleFont: { size: 13, weight: '600' },
-                            bodyFont: { size: 12 },
-                            titleColor: '#fff',
-                            bodyColor: '#cbd5e1',
-                            displayColors: true,
-                            borderColor: '#e2e8f0',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': Bs ' + context.parsed.y.toLocaleString('es-BO', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    });
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                color: '#94a3b8',
-                                font: { size: 11 },
-                                callback: function(value) {
-                                    return 'Bs ' + value.toLocaleString('es-BO', { maximumFractionDigits: 0 });
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                color: '#94a3b8',
-                                font: { size: 11 }
-                            },
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Gráfico de Distribución de Gastos
-        const expenseCtx = document.getElementById('expenseChart');
-        if (expenseCtx) {
-            const expenseSegments = @json($expenseSegments);
-            
-            new Chart(expenseCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: expenseSegments.map(s => s.categoria),
-                    datasets: [{
-                        data: expenseSegments.map(s => parseFloat(s.percent)),
-                        backgroundColor: expenseSegments.map(s => s.color),
-                        borderColor: '#fff',
-                        borderWidth: 3,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                            padding: 12,
-                            titleFont: { size: 13, weight: '600' },
-                            bodyFont: { size: 12 },
-                            titleColor: '#fff',
-                            bodyColor: '#cbd5e1',
-                            borderColor: '#e2e8f0',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.label + ': ' + context.parsed + '%';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
-</script>
-@endpush

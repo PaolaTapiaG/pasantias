@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cobro;
 use App\Models\Empleado;
-use App\Models\Factura;
 use App\Models\Gasto;
 use App\Models\Medidor;
-use App\Models\Sector;
-use App\Models\Socio;
 use App\Models\Tarifa;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -46,7 +44,7 @@ class ExportController extends Controller
             $query->where('id_rol', $request->rol);
         }
 
-        $rows = $query->get()->map(fn (Empleado $empleado) => [
+        $mapper = fn (Empleado $empleado) => [
             'Empleado' => $empleado->persona?->nombre_completo,
             'CI' => $empleado->persona?->cedula_identidad,
             'Telefono' => $empleado->persona?->telefono,
@@ -55,7 +53,17 @@ class ExportController extends Controller
             'Usuario' => $empleado->user?->username,
             'Ingreso' => optional($empleado->fecha_ingreso)->format('d/m/Y'),
             'Estado' => ucfirst($empleado->estado),
-        ]);
+        ];
+
+        if ($format === 'excel') {
+            return $this->downloadCsv('empleados', array_keys($mapper(new Empleado)), function () use ($query, $mapper, $request): iterable {
+                foreach ($query->limit($this->exportLimit($request))->lazyById(250, 'id_empleado') as $empleado) {
+                    yield $mapper($empleado);
+                }
+            });
+        }
+
+        $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'empleados', 'Reporte de empleados', $rows);
     }
@@ -112,7 +120,7 @@ class ExportController extends Controller
             $query->where('s.oculto', $request->visibilidad === 'ocultos');
         }
 
-        $rows = $query->get()->map(fn ($socio) => [
+        $mapper = fn ($socio) => [
             'Codigo' => $socio->codigo_display,
             'Socio' => $socio->nombre_completo,
             'CI' => $socio->cedula_identidad,
@@ -123,7 +131,17 @@ class ExportController extends Controller
             'Medidor' => $socio->medidor_numero_serie,
             'Estado' => ucfirst($socio->estado),
             'Oculto' => $socio->oculto ? 'Si' : 'No',
-        ]);
+        ];
+
+        if ($format === 'excel') {
+            return $this->downloadCsv('socios', array_keys($mapper((object) [])), function () use ($query, $mapper, $request): iterable {
+                foreach ($query->limit($this->exportLimit($request))->lazyById(250, 's.id_socio') as $socio) {
+                    yield $mapper($socio);
+                }
+            });
+        }
+
+        $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'socios', 'Reporte de socios', $rows);
     }
@@ -144,7 +162,7 @@ class ExportController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        $rows = $query->get()->map(function (Tarifa $tarifa) {
+        $mapper = function (Tarifa $tarifa) {
             $desglose = $tarifa->calcularDesglose(35);
 
             return [
@@ -158,7 +176,17 @@ class ExportController extends Controller
                 'Socios' => $tarifa->socios_count,
                 'Vigencia' => optional($tarifa->fecha_vigencia)->format('d/m/Y'),
             ];
-        });
+        };
+
+        if ($format === 'excel') {
+            return $this->downloadCsv('tarifas', array_keys($mapper(new Tarifa)), function () use ($query, $mapper, $request): iterable {
+                foreach ($query->limit($this->exportLimit($request))->lazyById(250, 'id_tarifa') as $tarifa) {
+                    yield $mapper($tarifa);
+                }
+            });
+        }
+
+        $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'tarifas', 'Reporte de tarifas', $rows);
     }
@@ -167,21 +195,33 @@ class ExportController extends Controller
     {
         $desde = $request->input('desde', now()->startOfMonth()->toDateString());
         $hasta = $request->input('hasta', now()->toDateString());
+        $categoria = $request->input('categoria');
 
-        $rows = Gasto::query()
+        $query = Gasto::query()
             ->with('empleado.persona')
             ->whereBetween('fecha_gasto', [$desde, $hasta])
+            ->when($categoria, fn ($query) => $query->where('categoria', $categoria))
             ->orderByDesc('fecha_gasto')
             ->orderByDesc('id_gasto')
-            ->get()
-            ->map(fn (Gasto $gasto) => [
+            ;
+        $mapper = fn (Gasto $gasto) => [
                 'Fecha' => optional($gasto->fecha_gasto)->format('d/m/Y'),
                 'Concepto' => $gasto->concepto,
                 'Categoria' => $gasto->categoria,
                 'Monto' => number_format((float) $gasto->monto, 2),
                 'Responsable' => $gasto->empleado?->persona?->nombre_completo,
                 'Descripcion' => $gasto->descripcion,
-            ]);
+            ];
+
+            if ($format === 'excel') {
+                return $this->downloadCsv('gastos', array_keys($mapper(new Gasto)), function () use ($query, $mapper, $request): iterable {
+                    foreach ($query->limit($this->exportLimit($request))->lazyById(250, 'id_gasto') as $gasto) {
+                        yield $mapper($gasto);
+                    }
+                });
+            }
+
+            $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'gastos', 'Reporte de gastos', $rows);
     }
@@ -210,7 +250,7 @@ class ExportController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        $rows = $query->get()->map(fn (Medidor $medidor) => [
+        $mapper = fn (Medidor $medidor) => [
             'Serie' => $medidor->numero_serie,
             'Marca' => $medidor->marca,
             'Modelo' => $medidor->modelo,
@@ -220,7 +260,17 @@ class ExportController extends Controller
             'Instalador' => $medidor->empleadoInstalador?->persona?->nombre_completo,
             'Fecha instalacion' => optional($medidor->fecha_instalacion)->format('d/m/Y'),
             'Estado' => ucfirst($medidor->estado),
-        ]);
+        ];
+
+        if ($format === 'excel') {
+            return $this->downloadCsv('medidores', array_keys($mapper(new Medidor)), function () use ($query, $mapper, $request): iterable {
+                foreach ($query->limit($this->exportLimit($request))->lazyById(250, 'id_medidor') as $medidor) {
+                    yield $mapper($medidor);
+                }
+            });
+        }
+
+        $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'medidores', 'Reporte de medidores', $rows);
     }
@@ -264,16 +314,26 @@ class ExportController extends Controller
             $query->where('f.id_periodo', $request->periodo);
         }
 
-        $rows = $query->get()->map(fn ($factura) => [
+        $mapper = fn ($factura) => [
             'Factura' => $factura->numero_factura,
             'Codigo usuario' => $factura->codigo_display,
             'Socio' => $factura->nombre_completo,
             'Periodo' => $factura->periodo_nombre,
-            'Emision' => optional($factura->fecha_emision)->format('d/m/Y'),
+            'Emision' => $factura->fecha_emision ? Carbon::parse($factura->fecha_emision)->format('d/m/Y') : '',
             'Consumo m3' => number_format((float) $factura->consumo_m3, 2),
             'Total' => number_format((float) $factura->total, 2),
             'Estado' => ucfirst($factura->estado),
-        ]);
+        ];
+
+        if ($format === 'excel') {
+            return $this->downloadCsv('facturas', array_keys($mapper((object) [])), function () use ($query, $mapper, $request): iterable {
+                foreach ($query->limit($this->exportLimit($request))->lazyById(250, 'f.id_factura') as $factura) {
+                    yield $mapper($factura);
+                }
+            });
+        }
+
+        $rows = $query->limit($this->pdfExportLimit($request))->get()->map($mapper);
 
         return $this->download($format, 'facturas', 'Reporte de facturas', $rows);
     }
@@ -283,20 +343,87 @@ class ExportController extends Controller
         abort_unless(in_array($format, ['pdf', 'excel'], true), 404);
 
         if ($format === 'pdf') {
-            return Pdf::loadView('exports.table-pdf', [
+            $startedAt = microtime(true);
+            $memoryBefore = memory_get_usage(true);
+            $response = Pdf::loadView('exports.table-pdf', [
                 'title' => $title,
                 'rows' => $rows,
-            ])->download($filename . '.pdf');
+            ])->setPaper('a4', 'landscape')->download($filename.'.pdf');
+
+            Log::info('export.completed', [
+                'format' => 'pdf',
+                'filename' => $filename,
+                'rows' => $rows->count(),
+                'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                'memory_bytes' => memory_get_peak_usage(true) - $memoryBefore,
+            ]);
+
+            return $response;
         }
 
-        $html = view('exports.table-excel', [
-            'title' => $title,
-            'rows' => $rows,
-        ])->render();
+        return $this->downloadCsv($filename, $rows->isEmpty() ? [] : array_keys($rows->first()), $rows);
+    }
 
-        return response($html, 200, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '.xls"',
+    private function downloadCsv(string $filename, array $headers, iterable|Collection $rows): Response
+    {
+        return response()->streamDownload(function () use ($headers, $rows): void {
+            $startedAt = microtime(true);
+            $memoryBefore = memory_get_usage(true);
+            $rowCount = 0;
+            $handle = fopen('php://output', 'wb');
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            if ($headers === []) {
+                fputcsv($handle, ['Sin datos para exportar.'], ';');
+                fclose($handle);
+
+                return;
+            }
+
+            fputcsv($handle, $headers, ';');
+
+            foreach ($rows as $row) {
+                fputcsv($handle, array_map(fn ($value) => $this->csvValue($value), $row), ';');
+                $rowCount++;
+            }
+
+            fclose($handle);
+
+            Log::info('export.completed', [
+                'format' => 'csv',
+                'filename' => $filename,
+                'rows' => $rowCount,
+                'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                'memory_bytes' => memory_get_peak_usage(true) - $memoryBefore,
+            ]);
+        }, $filename.'.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    private function exportLimit(Request $request): int
+    {
+        return min(max($request->integer('limit', 5000), 100), 20000);
+    }
+
+    private function pdfExportLimit(Request $request): int
+    {
+        $requested = $request->integer('limit', 500);
+
+        abort_if($requested > 500, 422, 'Los PDF se limitan a 500 filas. Usa CSV para exportaciones mayores.');
+
+        return min(max($requested, 100), 500);
+    }
+
+    private function csvValue(mixed $value): string
+    {
+        $value = trim((string) $value);
+
+        if (preg_match('/^[=+\-@]/', $value) === 1) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

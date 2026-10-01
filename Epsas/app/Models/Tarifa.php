@@ -45,7 +45,16 @@ class Tarifa extends Model
 
     public function calcularDesglose(float $consumoM3): array
     {
-        return app(WaterBillingService::class)->breakdown($consumoM3);
+        return app(WaterBillingService::class)->breakdown($consumoM3, $this->billingSettings());
+    }
+
+    public function billingSettings(): array
+    {
+        return [
+            'included_m3' => (float) $this->consumo_minimo_m3,
+            'fixed_charge' => (float) $this->cargo_fijo,
+            'excess_rate' => (float) $this->precio_m3_base,
+        ];
     }
 
     // ── Relaciones ─────────────────────────────

@@ -10,10 +10,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class GastoController extends Controller
 {
+    private const EXPENSE_CATEGORIES = [
+        'Gasto de oficina',
+        'Materiales y cañerías',
+        'Pago de salarios',
+        'Bonos laborales',
+        'Aguinaldos',
+        'Mantenimiento',
+        'Combustible',
+        'Servicios basicos',
+        'Otros',
+    ];
+
     public function index(Request $request): View
     {
         $data = $this->expenseIndexData($request);
@@ -30,6 +43,7 @@ class GastoController extends Controller
     {
         $desde = $request->input('desde', now()->startOfMonth()->toDateString());
         $hasta = $request->input('hasta', now()->toDateString());
+        $categoria = $request->input('categoria');
 
         $query = DB::table('gastos as g')
             ->leftJoin('empleados as e', 'e.id_empleado', '=', 'g.id_empleado')
@@ -37,21 +51,31 @@ class GastoController extends Controller
             ->select(['g.id_gasto', 'g.fecha_gasto', 'g.concepto', 'g.categoria', 'g.descripcion', 'g.monto', 'g.id_empleado'])
             ->selectRaw("TRIM(COALESCE(p.nombres, '') || ' ' || COALESCE(p.apellidos, '')) as empleado_nombre")
             ->whereBetween('g.fecha_gasto', [$desde, $hasta])
+            ->when($categoria, fn ($builder) => $builder->where('g.categoria', $categoria))
             ->orderByDesc('g.fecha_gasto')
             ->orderByDesc('g.id_gasto');
 
-        Cache::add('gastos:index:version', 1, now()->addYears(2));
-        $cacheKey = 'gastos:index:v' . Cache::get('gastos:index:version', 1) . ':' . md5(json_encode($request->query()));
+        $suffix = md5(json_encode($request->query()));
 
         return [
-            'gastos' => Cache::remember($cacheKey, now()->addDays(7), fn () => $query
+            'gastos' => OperationalCache::rememberDomain('billing', 'gastos.index.'.$suffix, fn () => $query
                 ->simplePaginate(12)
                 ->withPath($path ?? url('/admin/gastos'))
                 ->appends($request->query())
                 ->through(fn ($row) => $this->expenseRowForView($row))),
             'desde' => $desde,
             'hasta' => $hasta,
-            'totalGastos' => Cache::remember("gastos:total:{$desde}:{$hasta}", now()->addDays(7), fn () => (float) Gasto::whereBetween('fecha_gasto', [$desde, $hasta])->sum('monto')),
+            'categoria' => $categoria,
+            'categoriasGasto' => self::EXPENSE_CATEGORIES,
+            'totalGastos' => OperationalCache::rememberDomain('billing', 'gastos.total.'.md5(json_encode([$desde, $hasta, $categoria])), fn () => (float) Gasto::query()
+                ->whereBetween('fecha_gasto', [$desde, $hasta])
+                ->when($categoria, fn ($builder) => $builder->where('categoria', $categoria))
+                ->sum('monto')),
+            'categoryTotals' => OperationalCache::rememberDomain('billing', 'gastos.categories.'.md5(json_encode([$desde, $hasta])), fn () => DB::table('gastos')
+                ->whereBetween('fecha_gasto', [$desde, $hasta])
+                ->selectRaw('categoria, ROUND(COALESCE(SUM(monto), 0), 2) as total')
+                ->groupBy('categoria')
+                ->pluck('total', 'categoria')),
         ];
     }
 
@@ -75,19 +99,13 @@ class GastoController extends Controller
         $data = $request->validate([
             'fecha_gasto' => ['required', 'date'],
             'concepto' => ['required', 'string', 'max:150'],
-            'categoria' => ['required', 'string', 'max:80'],
+            'categoria' => ['required', 'string', 'max:80', Rule::in(self::EXPENSE_CATEGORIES)],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'monto' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         Gasto::create($data + ['id_empleado' => $empleadoId]);
-        Cache::forget('gastos:total:' . $data['fecha_gasto'] . ':' . $data['fecha_gasto']);
-        Cache::forget('dashboard:recent-operational-expenses');
-        Cache::add('gastos:index:version', 1, now()->addYears(2));
-        Cache::increment('gastos:index:version');
-        Cache::add('reportes:index:version', 1, now()->addYears(2));
-        Cache::increment('reportes:index:version');
-        OperationalCache::bump();
+        OperationalCache::bumpDomain('billing');
 
         return redirect()
             ->route('admin.gastos.index')

@@ -18,6 +18,12 @@
         </header>
 
         <main class="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+            @if ($user?->must_change_password)
+                <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm">
+                    Debes cambiar tu contrasena temporal para poder ingresar a los demas modulos.
+                </div>
+            @endif
+
             @if ($errors->any())
                 <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
                     {{ $errors->first() }}
@@ -30,7 +36,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('tecnico.configuracion.profile.update') }}" enctype="multipart/form-data" class="theme-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+            <form method="POST" action="{{ route('tecnico.configuracion.profile.update') }}" enctype="multipart/form-data" data-profile-password-form class="theme-card rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
                 @csrf
                 @method('PUT')
 
@@ -73,15 +79,25 @@
                             <div class="mt-4 grid gap-4 md:grid-cols-3">
                                 <div>
                                     <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Contraseña actual</label>
-                                    <input name="current_password" type="password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    <input name="current_password" type="password" autocomplete="current-password" @required($user?->must_change_password) class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    @error('current_password')
+                                        <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Nueva contraseña</label>
-                                    <input name="new_password" type="password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    <input name="new_password" type="password" autocomplete="new-password" @required($user?->must_change_password) class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    @error('new_password')
+                                        <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div>
                                     <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Confirmar nueva contraseña</label>
-                                    <input name="new_password_confirmation" type="password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    <input name="new_password_confirmation" type="password" autocomplete="new-password" @required($user?->must_change_password) class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none">
+                                    <p data-password-match-message class="mt-2 hidden text-xs font-semibold text-rose-600">La nueva contrasena y la confirmacion deben ser iguales.</p>
+                                    @error('new_password_confirmation')
+                                        <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                         </div>

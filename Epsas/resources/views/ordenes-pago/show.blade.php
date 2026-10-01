@@ -210,9 +210,15 @@
                             </div>
                             <div class="rounded-[1.5rem] bg-[#7b2286] p-4 text-center text-white">
                                 <p class="text-xs font-black uppercase tracking-[0.18em] text-white/75">QR empresa</p>
-                                <div class="mt-3 rounded-2xl bg-white p-3 [&_svg]:h-auto [&_svg]:w-full">
-                                    {!! $qrSvg !!}
-                                </div>
+                                @if ($qrSvg)
+                                    <div class="mt-3 rounded-2xl bg-white p-3 [&_svg]:h-auto [&_svg]:w-full">
+                                        {!! $qrSvg !!}
+                                    </div>
+                                @else
+                                    <div class="mt-3 rounded-2xl border border-white/20 bg-white/10 px-4 py-6 text-sm font-semibold text-white">
+                                        QR pendiente de configuracion bancaria oficial.
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </article>

@@ -17,6 +17,12 @@
         ])
 
         <main class="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+            @if ($user->must_change_password)
+                <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm">
+                    Debes cambiar tu contrasena temporal para poder ingresar a los demas modulos.
+                </div>
+            @endif
+
             @if (session('success'))
                 <div class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm">
                     {{ session('success') }}
@@ -45,7 +51,7 @@
                         </div>
                     </aside>
 
-                    <form method="POST" action="{{ route('secretaria.perfil.update') }}" enctype="multipart/form-data" class="grid gap-5 p-6 sm:p-8">
+                    <form method="POST" action="{{ route('secretaria.perfil.update') }}" enctype="multipart/form-data" data-profile-password-form class="grid gap-5 p-6 sm:p-8">
                         @csrf
                         @method('PUT')
 
@@ -89,21 +95,25 @@
                             <div class="mt-4 grid gap-5 sm:grid-cols-3">
                                 <div>
                                     <label class="text-xs font-black text-slate-700" for="current_password">Actual</label>
-                                    <input id="current_password" type="password" name="current_password" class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
+                                    <input id="current_password" type="password" name="current_password" autocomplete="current-password" @required($user->must_change_password) class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
                                     @error('current_password')
                                         <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label class="text-xs font-black text-slate-700" for="new_password">Nueva</label>
-                                    <input id="new_password" type="password" name="new_password" class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
+                                    <input id="new_password" type="password" name="new_password" autocomplete="new-password" @required($user->must_change_password) class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
                                     @error('new_password')
                                         <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
                                     @enderror
                                 </div>
                                 <div>
                                     <label class="text-xs font-black text-slate-700" for="new_password_confirmation">Confirmar</label>
-                                    <input id="new_password_confirmation" type="password" name="new_password_confirmation" class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
+                                    <input id="new_password_confirmation" type="password" name="new_password_confirmation" autocomplete="new-password" @required($user->must_change_password) class="mt-2 h-12 w-full rounded-2xl border border-emerald-100 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100">
+                                    <p data-password-match-message class="mt-2 hidden text-xs font-semibold text-rose-600">La nueva contrasena y la confirmacion deben ser iguales.</p>
+                                    @error('new_password_confirmation')
+                                        <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                         </div>

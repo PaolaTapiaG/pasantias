@@ -4,6 +4,35 @@ DROP FUNCTION IF EXISTS get_mi_rol();
 DROP FUNCTION IF EXISTS tiene_rol(VARIADIC TEXT[]);
 DROP FUNCTION IF EXISTS get_mi_empleado_id();
 
+CREATE OR REPLACE FUNCTION epsas_auth_uid()
+RETURNS UUID
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_uid UUID;
+BEGIN
+  BEGIN
+    EXECUTE 'SELECT auth.uid()' INTO v_uid;
+  EXCEPTION
+    WHEN invalid_schema_name OR undefined_function THEN
+      v_uid := NULL;
+  END;
+
+  IF v_uid IS NULL THEN
+    BEGIN
+      v_uid := NULLIF(current_setting('app.supabase_uid', TRUE), '')::UUID;
+    EXCEPTION
+      WHEN invalid_text_representation THEN
+        v_uid := NULL;
+    END;
+  END IF;
+
+  RETURN v_uid;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION get_mi_rol()
 RETURNS TEXT
 LANGUAGE sql
@@ -14,7 +43,7 @@ AS $$
   SELECT r.nombre
   FROM empleados e
   JOIN roles r ON r.id_rol = e.id_rol
-  WHERE e.user_id = auth.uid()
+  WHERE e.user_id = epsas_auth_uid()
     AND e.estado = 'activo'
   LIMIT 1;
 $$;
@@ -26,7 +55,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT get_mi_rol() = ANY(p_roles);
+  SELECT EXISTS (
+    SELECT 1
+    FROM (SELECT get_mi_rol() AS rol) current_role
+    WHERE current_role.rol = ANY(p_roles)
+       OR (current_role.rol = 'administrador' AND 'admin' = ANY(p_roles))
+       OR (current_role.rol = 'admin' AND 'administrador' = ANY(p_roles))
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION get_mi_empleado_id()
@@ -38,7 +73,7 @@ SET search_path = public
 AS $$
   SELECT id_empleado
   FROM empleados
-  WHERE user_id = auth.uid()
+  WHERE user_id = epsas_auth_uid()
     AND estado = 'activo'
   LIMIT 1;
 $$;
@@ -120,7 +155,7 @@ CREATE POLICY empleados_select_admin ON empleados
 CREATE POLICY empleados_select_self ON empleados
   FOR SELECT USING (
     tiene_rol('secretaria', 'tecnico')
-    AND user_id = auth.uid()
+    AND user_id = epsas_auth_uid()
   );
 CREATE POLICY empleados_insert ON empleados
   FOR INSERT WITH CHECK (tiene_rol('admin'));
@@ -129,11 +164,11 @@ CREATE POLICY empleados_update_admin ON empleados
 CREATE POLICY empleados_update_self ON empleados
   FOR UPDATE USING (
     tiene_rol('secretaria', 'tecnico')
-    AND user_id = auth.uid()
+    AND user_id = epsas_auth_uid()
   )
   WITH CHECK (
     tiene_rol('secretaria', 'tecnico')
-    AND user_id = auth.uid()
+    AND user_id = epsas_auth_uid()
   );
 CREATE POLICY empleados_delete ON empleados
   FOR DELETE USING (tiene_rol('admin'));

@@ -1,9 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    "./resources/views/**/*.blade.php",
-    "./resources/js/**/*.js",
-    "./resources/css/**/*.css",
+    './resources/**/*.{blade.php,js}',
+    './app/View/Components/**/*.php',
+    './app/Http/**/*.php',
   ],
   darkMode: 'class',
   theme: {
@@ -60,6 +60,9 @@ export default {
         '5xl': '3rem',
       },
     },
+  },
+  cacheInvalidation: {
+    timestamp: true,
   },
   plugins: [],
 }

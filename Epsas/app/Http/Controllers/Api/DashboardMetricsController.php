@@ -5,8 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Cobro;
 use App\Models\Factura;
-use App\Models\Lectura;
-use App\Models\Medidor;
+use App\Models\IngresoAdministrativo;
 use App\Models\Socio;
 use App\Support\OperationalCache;
 use Illuminate\Http\JsonResponse;
@@ -21,13 +20,17 @@ class DashboardMetricsController extends Controller
             $inicioMes = now()->startOfMonth()->toDateString();
             $finMes = now()->endOfMonth()->toDateString();
 
+            $ingresosFacturas = Cobro::whereBetween('fecha_cobro', [$inicioMes, $finMes])
+                ->where('estado', '!=', 'anulado')
+                ->sum('monto_pagado');
+            $ingresosAdministrativos = IngresoAdministrativo::whereBetween('fecha_ingreso', [$inicioMes, $finMes])
+                ->sum('monto');
+
             return [
                 'socios' => Socio::count(),
                 'facturas_pendientes' => Factura::whereIn('estado', ['pendiente', 'parcial', 'vencida'])->count(),
                 'cobros_pendientes' => Factura::whereIn('estado', ['pendiente', 'parcial', 'vencida'])->count(),
-                'ingresos_mensuales' => round((float) Cobro::whereBetween('fecha_cobro', [$inicioMes, $finMes])
-                    ->where('estado', '!=', 'anulado')
-                    ->sum('monto_pagado'), 2),
+                'ingresos_mensuales' => round((float) ($ingresosFacturas + $ingresosAdministrativos), 2),
             ];
         });
 

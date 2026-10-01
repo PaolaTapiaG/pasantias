@@ -1,18 +1,24 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\DashboardMetricsController;
-use App\Http\Controllers\ClientePortalController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BankPaymentWebhookController;
+use App\Http\Controllers\CobroController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\GastoController;
-use App\Http\Controllers\MedidorController;
 use App\Http\Controllers\LecturaController;
+use App\Http\Controllers\MedidorController;
+use App\Http\Controllers\OperationalMapController;
 use App\Http\Controllers\PaymentOrderController;
+use App\Http\Controllers\PrivateMediaController;
+use App\Http\Controllers\ProductionHealthController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\SecretariaOperacionController;
 use App\Http\Controllers\SecretariaProfileController;
 use App\Http\Controllers\SmsGatewayController;
 use App\Http\Controllers\SocioController;
@@ -21,46 +27,69 @@ use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\TarifaController;
 use App\Http\Controllers\TecnicoPanelController;
 use App\Http\Controllers\TecnicoProfileController;
-use App\Http\Controllers\CobroController;
-use App\Http\Controllers\FacturaController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-Route::get('/', [StaticPageController::class, 'home']);
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
-// ========== PORTAL CLIENTE (Público - SIN Autenticación) ==========
-Route::prefix('portal/cliente')->name('portal.')->middleware('throttle:30,1')->group(function () {
-    Route::get('/', [ClientePortalController::class, 'index'])->name('index');
-    Route::get('/buscar-deuda', [ClientePortalController::class, 'buscarDeuda'])->name('buscar-deuda');
-    Route::get('/factura/{id}', [ClientePortalController::class, 'verFactura'])->name('ver-factura');
-    Route::post('/ordenes', [PaymentOrderController::class, 'storePortal'])->name('ordenes.store');
-    Route::get('/ordenes/{ordenPago:codigo}/{token}', [PaymentOrderController::class, 'showPortal'])->name('ordenes.show');
-    Route::post('/ordenes/{ordenPago:codigo}/{token}/comprobante', [PaymentOrderController::class, 'uploadProof'])->middleware('throttle:6,1')->name('ordenes.comprobante');
-    Route::post('/iniciar-pago', [ClientePortalController::class, 'iniciarPago'])->name('iniciar-pago');
-    Route::get('/pago-exitoso', [ClientePortalController::class, 'pagoCancelado'])->name('pago-exitoso');
-    Route::get('/pago-fallido', [ClientePortalController::class, 'pagoCancelado'])->name('pago-fallido');
-    Route::get('/{page}', [ClientePortalController::class, 'page'])
-        ->where('page', 'sobre-nosotros|atencion-al-publico|comunicados|horarios|proyectos|pagos-online|puntos|epsas-informa|contactanos')
-        ->name('page');
-});
+Route::post('/webhooks/bank/payments', BankPaymentWebhookController::class)
+    ->withoutMiddleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        ValidateCsrfToken::class,
+    ])
+    ->middleware('throttle:120,1')
+    ->name('webhooks.bank.payments');
+
+Route::get('/health/ready', ProductionHealthController::class)
+    ->withoutMiddleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        ValidateCsrfToken::class,
+    ])
+    ->middleware('throttle:30,1')
+    ->name('health.ready');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.submit');
     Route::get('/recuperar-cuenta', [AuthController::class, 'showRecoveryRequest'])->name('password.request');
-    Route::post('/recuperar-cuenta', [AuthController::class, 'sendRecoveryCode'])->name('password.email');
+    Route::post('/recuperar-cuenta', [AuthController::class, 'sendRecoveryCode'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/recuperar-cuenta/codigo', [AuthController::class, 'showRecoveryReset'])->name('password.reset.code');
-    Route::post('/recuperar-cuenta/codigo', [AuthController::class, 'resetWithRecoveryCode'])->name('password.reset.sms');
+    Route::post('/recuperar-cuenta/codigo', [AuthController::class, 'resetWithRecoveryCode'])->middleware('throttle:5,1')->name('password.reset.sms');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'password.changed'])->group(function () {
+    Route::middleware('role:administrador,secretaria,tecnico')->get('/media/personas/{persona}/foto', [PrivateMediaController::class, 'personaPhoto'])->name('private-media.persona-photo');
+    Route::middleware('role:administrador,tecnico')->get('/media/anomalias/{anomalia}/evidencia', [PrivateMediaController::class, 'anomalyEvidence'])->name('private-media.anomaly-evidence');
+    Route::middleware('role:administrador,tecnico')->get('/media/incidencias/{incidencia}/evidencia', [PrivateMediaController::class, 'incidentEvidence'])->name('private-media.incident-evidence');
+    Route::middleware('role:administrador,secretaria,tecnico')->get('/media/lecturas/{lectura}/evidencia', [PrivateMediaController::class, 'readingEvidence'])->name('private-media.reading-evidence');
+
     Route::prefix('api')->name('api.')->group(function () {
-        Route::get('/admin/notifications', AdminNotificationController::class)->name('admin.notifications');
+        Route::middleware('role:administrador,secretaria,tecnico')->get('/admin/notifications', AdminNotificationController::class)->name('admin.notifications');
         Route::middleware('role:administrador,secretaria')->get('/dashboard/secretaria-metrics', [DashboardMetricsController::class, 'secretaria'])->name('dashboard.secretaria-metrics');
         Route::middleware('role:administrador,tecnico')->get('/dashboard/tecnico-metrics', [DashboardMetricsController::class, 'tecnico'])->name('dashboard.tecnico-metrics');
+        Route::middleware('role:administrador,tecnico')->get('/tecnico/medidores/catalogo', [TecnicoPanelController::class, 'medidorCatalog'])->name('tecnico.medidores.catalogo');
+        Route::middleware('role:administrador,secretaria,tecnico')->get('/tecnico/socios/catalogo', [TecnicoPanelController::class, 'socioCatalogSearch'])->name('tecnico.socios.catalogo');
     });
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::middleware('role:administrador,secretaria,tecnico')
+        ->get('/admin/mapa-operativo', OperationalMapController::class)
+        ->name('mapa-operativo.index');
+    Route::middleware('role:administrador')
+        ->patch('/admin/mapa-operativo/oficina', [OperationalMapController::class, 'updateOffice'])
+        ->name('mapa-operativo.office.update');
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->name('logout');
 
     Route::middleware('role:administrador,secretaria')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/socios', [SocioController::class, 'index'])->name('socios.index');
@@ -68,6 +97,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/socios/crear', [SocioController::class, 'create'])->name('socios.create');
         Route::post('/socios', [SocioController::class, 'store'])->name('socios.store');
         Route::get('/socios/{socio}', [SocioController::class, 'show'])->name('socios.show');
+        Route::get('/socios/{socio}/carnet', [SocioController::class, 'carnet'])->name('socios.carnet');
+        Route::post('/socios/{socio}/carnet/ingreso', [SocioController::class, 'registrarCarnetizacion'])->name('socios.carnet.ingreso');
         Route::get('/socios/{socio}/editar', [SocioController::class, 'edit'])->name('socios.edit');
         Route::put('/socios/{socio}', [SocioController::class, 'update'])->name('socios.update');
         Route::patch('/socios/{socio}/activar', [SocioController::class, 'activate'])->name('socios.activate');
@@ -79,7 +110,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/usuarios', [StaticPageController::class, 'usuarios'])->name('usuarios.index');
         Route::get('/permisos', [StaticPageController::class, 'permisos'])->name('permisos.index');
+        Route::get('/perfil', [AdminProfileController::class, 'edit'])->name('perfil.index');
+        Route::put('/perfil', [AdminProfileController::class, 'update'])->name('perfil.update');
         Route::get('/configuracion', [SystemSettingController::class, 'index'])->name('configuracion.index');
+        Route::get('/configuracion/empresa-branding', [SystemSettingController::class, 'company'])->name('configuracion.empresa');
+        Route::get('/configuracion/carnetizacion', [SystemSettingController::class, 'carnet'])->name('configuracion.carnet');
         Route::put('/configuracion', [SystemSettingController::class, 'update'])->name('configuracion.update');
         Route::put('/configuracion/perfil', [AdminProfileController::class, 'update'])->name('configuracion.profile.update');
         Route::get('/configuracion/sms-gateway', [SmsGatewayController::class, 'index'])->name('configuracion.sms-gateway');
@@ -95,6 +130,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/empleados/export/{format}', [ExportController::class, 'empleados'])->name('empleados.export');
         Route::get('/empleados/crear', [EmpleadoController::class, 'create'])->name('empleados.create');
         Route::post('/empleados', [EmpleadoController::class, 'store'])->name('empleados.store');
+        Route::post('/empleados/{empleado}/egreso-laboral', [EmpleadoController::class, 'storeLaborExpense'])->name('empleados.egreso-laboral');
         Route::get('/empleados/{empleado}', [EmpleadoController::class, 'show'])->name('empleados.show');
         Route::get('/empleados/{empleado}/editar', [EmpleadoController::class, 'edit'])->name('empleados.edit');
         Route::put('/empleados/{empleado}', [EmpleadoController::class, 'update'])->name('empleados.update');
@@ -109,30 +145,40 @@ Route::middleware('auth')->group(function () {
         Route::post('/facturas/generar', [FacturaController::class, 'store'])->name('facturas.store');
         Route::get('/facturas/{factura}', [FacturaController::class, 'show'])->name('facturas.show');
         Route::get('/facturas/{factura}/pdf', [FacturaController::class, 'pdf'])->name('facturas.pdf');
-        Route::post('/facturas/{factura}/enviar-email', [FacturaController::class, 'sendEmail'])->name('facturas.send-email');
         Route::get('/facturas/{factura}/imprimir', [FacturaController::class, 'print'])->name('facturas.print');
         Route::get('/cobros', [CobroController::class, 'index'])->name('cobros.index');
         Route::get('/cobros/resultado/finalizado', [CobroController::class, 'result'])->name('cobros.result');
         Route::get('/cobros/{socio}', [CobroController::class, 'show'])->name('cobros.show');
         Route::post('/cobros/{socio}', [CobroController::class, 'store'])->name('cobros.store');
         Route::get('/ordenes-pago', [PaymentOrderController::class, 'index'])->name('ordenes-pago.index');
+        Route::get('/ordenes-pago/{ordenPago:codigo}/comprobante', [PaymentOrderController::class, 'proof'])->name('ordenes-pago.proof');
         Route::get('/ordenes-pago/{ordenPago:codigo}', [PaymentOrderController::class, 'show'])->name('ordenes-pago.show');
         Route::patch('/ordenes-pago/{ordenPago:codigo}/aprobar', [PaymentOrderController::class, 'approve'])->name('ordenes-pago.approve');
         Route::patch('/ordenes-pago/{ordenPago:codigo}/rechazar', [PaymentOrderController::class, 'reject'])->name('ordenes-pago.reject');
         Route::post('/ordenes-pago/{ordenPago:codigo}/enviar-facturas-email', [PaymentOrderController::class, 'sendInvoicesEmail'])->name('ordenes-pago.send-invoices-email');
         Route::patch('/reconexiones/{orden}/aprobar', [TecnicoPanelController::class, 'approveReconexion'])->name('reconexiones.approve');
         Route::get('/reportes', [ReporteController::class, 'index'])->name('reportes.index');
+        Route::get('/operaciones-secretaria', [SecretariaOperacionController::class, 'index'])->name('operaciones.index');
+        Route::post('/operaciones-secretaria/caja/abrir', [SecretariaOperacionController::class, 'openCash'])->name('operaciones.caja.abrir');
+        Route::patch('/operaciones-secretaria/caja/cerrar', [SecretariaOperacionController::class, 'closeCash'])->name('operaciones.caja.cerrar');
+        Route::patch('/operaciones-secretaria/caja/{cierreCaja}/revisar', [SecretariaOperacionController::class, 'reviewCash'])->name('operaciones.caja.revisar');
+        Route::post('/operaciones-secretaria/solicitudes', [SecretariaOperacionController::class, 'storeRequest'])->name('operaciones.solicitudes.store');
+        Route::patch('/operaciones-secretaria/solicitudes/{incidencia}', [SecretariaOperacionController::class, 'updateRequest'])->name('operaciones.solicitudes.update');
+        Route::post('/operaciones-secretaria/comunicados', [SecretariaOperacionController::class, 'storeCommunication'])->name('operaciones.comunicados.store');
+        Route::patch('/operaciones-secretaria/comunicados/{comunicado}', [SecretariaOperacionController::class, 'updateCommunication'])->name('operaciones.comunicados.update');
         Route::get('/perfil-secretaria', [SecretariaProfileController::class, 'edit'])->name('perfil.index');
         Route::put('/perfil-secretaria', [SecretariaProfileController::class, 'update'])->name('perfil.update');
     });
 
+    Route::middleware('role:administrador,secretaria,tecnico')
+        ->get('/admin/lecturas', [LecturaController::class, 'index'])
+        ->name('tecnico.lecturas.index');
+
     Route::middleware('role:administrador,tecnico')->prefix('admin')->name('tecnico.')->group(function () {
         Route::get('/medidores', [MedidorController::class, 'index'])->name('medidores.index');
         Route::get('/medidores/export/{format}', [ExportController::class, 'medidores'])->name('medidores.export');
-        Route::get('/lecturas', [LecturaController::class, 'index'])->name('lecturas.index');
         Route::get('/lecturas/crear', [LecturaController::class, 'create'])->name('lecturas.create');
         Route::post('/lecturas', [LecturaController::class, 'store'])->name('lecturas.store');
-        Route::get('/consumo', [TecnicoPanelController::class, 'consumo'])->name('consumo.index');
         Route::put('/perfil-tecnico', [TecnicoProfileController::class, 'update'])->name('configuracion.profile.update');
         Route::get('/perfil-tecnico', [TecnicoProfileController::class, 'edit'])->name('configuracion.index');
         Route::get('/anomalias', [TecnicoPanelController::class, 'anomalias'])->name('anomalias.index');
@@ -159,4 +205,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/medidores/{medidor}/editar', [MedidorController::class, 'edit'])->name('medidores.edit');
         Route::put('/medidores/{medidor}', [MedidorController::class, 'update'])->name('medidores.update');
     });
+
+    Route::middleware('role:administrador,tecnico')
+        ->get('/admin/consumo', [TecnicoPanelController::class, 'consumo'])
+        ->name('tecnico.consumo.legacy');
+
+    Route::middleware('role:tecnico')
+        ->get('/tecnico/consumo', [TecnicoPanelController::class, 'consumoTecnico'])
+        ->name('tecnico.consumo.index');
 });

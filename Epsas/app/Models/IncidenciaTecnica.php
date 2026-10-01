@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class IncidenciaTecnica extends Model
 {
+    use CachesOperationalRouteBinding;
+
     protected $table = 'incidencias_tecnicas';
     protected $primaryKey = 'id_incidencia';
 
@@ -28,8 +30,8 @@ class IncidenciaTecnica extends Model
 
     protected $casts = [
         'fecha_reporte' => 'datetime',
-        'coord_x' => 'decimal:2',
-        'coord_y' => 'decimal:2',
+        'coord_x' => 'decimal:7',
+        'coord_y' => 'decimal:7',
     ];
 
     public function socio(): BelongsTo
@@ -52,10 +54,6 @@ class IncidenciaTecnica extends Model
             return $this->evidencia_path;
         }
 
-        if (Str::startsWith($this->evidencia_path, 'storage/')) {
-            return asset($this->evidencia_path);
-        }
-
-        return Storage::disk('public')->url($this->evidencia_path);
+        return route('private-media.incident-evidence', $this);
     }
 }

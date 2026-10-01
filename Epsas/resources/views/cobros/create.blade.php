@@ -41,14 +41,11 @@
                     <div>
                         <p class="text-xs font-black uppercase tracking-[0.22em] text-emerald-600">Pagos</p>
                         <h2 class="mt-1 text-2xl font-black text-slate-950">Registrar pago de {{ $selectedSocio['nombre_completo'] }}</h2>
-                        <p class="mt-2 text-sm text-slate-500">Aqui se registra el cobro y se generan QR separados para cuota y multa.</p>
+                        <p class="mt-2 text-sm text-slate-500">Aqui se registra el cobro de caja. Al finalizar podras imprimir, descargar o enviar la factura pagada.</p>
                     </div>
                     <div class="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                        <a href="{{ route('secretaria.cobros.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100">
-                            Volver a deudores
-                        </a>
-                        <a href="{{ route('secretaria.facturas.index') }}" class="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700">
-                            Ver facturacion
+                        <a href="{{ route('secretaria.operaciones.index') }}" class="inline-flex items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-100">
+                            Volver a caja
                         </a>
                     </div>
                 </div>
@@ -68,6 +65,7 @@
                                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Socio</p>
                                 <p class="mt-1 text-base font-semibold text-slate-900">{{ $selectedSocio['nombre_completo'] }}</p>
                                 <p class="mt-1 text-sm text-slate-500">{{ $selectedSocio['codigo_display'] }} | CI {{ $selectedSocio['cedula_identidad'] ?: 'Sin registro' }}</p>
+                                <p class="mt-1 text-sm text-slate-500">Medidor {{ $selectedSocio['numero_medidor'] ?: 'sin medidor activo' }}</p>
                             </div>
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Contacto</p>
@@ -99,6 +97,9 @@
                                             value="{{ $metodo->id_metodo_pago }}"
                                             data-method-name="{{ $metodo->nombre }}"
                                             data-requires-reference="{{ $metodo->requiere_referencia ? '1' : '0' }}"
+                                            data-requires-cash="{{ $metodo->requiere_caja_abierta ? '1' : '0' }}"
+                                            data-is-online="{{ $metodo->es_online ? '1' : '0' }}"
+                                            data-requires-conciliation="{{ $metodo->requiere_conciliacion ? '1' : '0' }}"
                                             data-is-cash="{{ $metodo->es_efectivo ? '1' : '0' }}"
                                             @selected((string) old('id_metodo_pago', optional($metodosPago->first())->id_metodo_pago) === (string) $metodo->id_metodo_pago)
                                         >
@@ -273,10 +274,10 @@
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                                     <div class="flex items-center justify-between gap-3">
                                         <div>
-                                            <p class="font-semibold text-slate-900">{{ $cobro->factura?->numero_factura ?: 'Sin factura' }}</p>
-                                            <p class="mt-1 text-xs text-slate-500">{{ optional($cobro->fecha_cobro)->format('d/m/Y') }} | {{ $cobro->metodoPago?->nombre ?: 'Sin metodo' }}</p>
+                                            <p class="font-semibold text-slate-900">{{ $cobro['numero_factura'] ?: 'Sin factura' }}</p>
+                                            <p class="mt-1 text-xs text-slate-500">{{ optional($cobro['fecha_cobro'])->format('d/m/Y') }} | {{ $cobro['metodo_pago'] ?: 'Sin metodo' }}</p>
                                         </div>
-                                        <p class="text-sm font-semibold text-slate-900">Bs {{ number_format((float) $cobro->monto_pagado, 2) }}</p>
+                                        <p class="text-sm font-semibold text-slate-900">Bs {{ number_format((float) $cobro['monto_pagado'], 2) }}</p>
                                     </div>
                                 </div>
                             @empty
@@ -320,11 +321,41 @@
         const formatCurrency = (value) => Number(value || 0).toFixed(2);
         const selectedSet = new Set(oldInvoices.map(String));
 
+        // Map checkbox to invoice index for sequential logic
+        const invoiceIndexById = new Map(invoices.map((inv, idx) => [String(inv.id_factura), idx]));
+
         checkboxes.forEach((checkbox) => {
             checkbox.checked = selectedSet.has(String(checkbox.value));
         });
 
         paidAmountInput.value = oldAmount;
+
+        const enforceSequentialOnCheck = (changedCheckbox) => {
+            const id = String(changedCheckbox.value);
+            const index = invoiceIndexById.has(id) ? invoiceIndexById.get(id) : -1;
+
+            if (index === -1) {
+                return;
+            }
+
+            if (changedCheckbox.checked) {
+                // When checking an invoice, ensure all older invoices are also checked
+                for (let i = 0; i < index; i++) {
+                    const cb = checkboxes[i];
+                    if (cb && !cb.checked) {
+                        cb.checked = true;
+                    }
+                }
+            } else {
+                // When unchecking an invoice, uncheck all newer invoices as they depend on older
+                for (let i = index + 1; i < checkboxes.length; i++) {
+                    const cb = checkboxes[i];
+                    if (cb && cb.checked) {
+                        cb.checked = false;
+                    }
+                }
+            }
+        };
 
         const render = () => {
             const selectedItems = invoices.filter((invoice) =>
@@ -339,6 +370,9 @@
             const selectedMethod = methodSelect?.selectedOptions?.[0];
             const isCash = selectedMethod?.dataset.isCash === '1';
             const requiresReference = selectedMethod?.dataset.requiresReference === '1';
+            const requiresCash = selectedMethod?.dataset.requiresCash === '1';
+            const isOnline = selectedMethod?.dataset.isOnline === '1';
+            const requiresConciliation = selectedMethod?.dataset.requiresConciliation === '1';
 
             subtotalNode.textContent = formatCurrency(subtotal);
             moraNode.textContent = formatCurrency(moraTotal);
@@ -350,9 +384,15 @@
             }
 
             if (referenceHint) {
-                referenceHint.textContent = requiresReference
-                    ? 'Este metodo exige una referencia o comprobante valido.'
-                    : 'En efectivo la referencia es opcional; si no la llenas, el sistema genera una automaticamente.';
+                referenceHint.textContent = isOnline
+                    ? 'QR online se registra como recaudacion electronica y queda separado de caja presencial.'
+                    : (requiresCash
+                        ? (requiresReference
+                            ? 'Este metodo presencial exige caja abierta y una referencia valida.'
+                            : 'Este metodo presencial usa caja abierta; la referencia es opcional.')
+                        : (requiresConciliation
+                            ? 'Este metodo queda pendiente de conciliacion administrativa.'
+                            : 'Si no llenas referencia, el sistema genera una automaticamente.'));
             }
 
             selectedItemsNode.innerHTML = selectedItems.map((item) => `
@@ -371,7 +411,11 @@
             submitButton.disabled = selectedItems.length === 0 || total <= 0 || !validAmount;
         };
 
-        checkboxes.forEach((checkbox) => checkbox.addEventListener('change', render));
+        checkboxes.forEach((checkbox) => checkbox.addEventListener('change', (e) => {
+            enforceSequentialOnCheck(e.target);
+            render();
+        }));
+
         paidAmountInput.addEventListener('input', render);
         methodSelect?.addEventListener('change', render);
         render();

@@ -8,6 +8,39 @@
         'facturas_pendientes' => 0,
         'qr_pendientes' => 0,
         'ingresos_mes' => 0,
+        'solicitudes_abiertas' => 0,
+    ];
+
+    $secretariaWorkChart = [
+        'type' => 'bar',
+        'theme' => 'emerald',
+        'legend' => false,
+        'value' => 'number',
+        'labels' => ['Socios', 'Facturas', 'QR', 'Solicitudes'],
+        'datasets' => [[
+            'label' => 'Atencion',
+            'data' => [
+                (int) $stats['socios_activos'],
+                (int) $stats['facturas_pendientes'],
+                (int) $stats['qr_pendientes'],
+                (int) $stats['solicitudes_abiertas'],
+            ],
+        ]],
+    ];
+
+    $secretariaPendingChart = [
+        'type' => 'doughnut',
+        'theme' => 'emerald',
+        'value' => 'number',
+        'labels' => ['Facturas pendientes', 'QR por aprobar', 'Solicitudes abiertas'],
+        'datasets' => [[
+            'label' => 'Pendientes',
+            'data' => [
+                (int) $stats['facturas_pendientes'],
+                (int) $stats['qr_pendientes'],
+                (int) $stats['solicitudes_abiertas'],
+            ],
+        ]],
     ];
 @endphp
 
@@ -91,6 +124,31 @@
                 </article>
             </section>
 
+            <section class="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                <article class="rounded-[2rem] border border-emerald-100 bg-white p-6 shadow-sm">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.22em] text-emerald-600">Grafico de atencion</p>
+                            <h3 class="mt-2 text-2xl font-black text-slate-950">Movimiento del panel</h3>
+                        </div>
+                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">Caja</span>
+                    </div>
+                    <div class="mt-5 h-72">
+                        <canvas data-epsas-chart='@json($secretariaWorkChart)'></canvas>
+                    </div>
+                </article>
+
+                <article class="rounded-[2rem] border border-emerald-100 bg-white p-6 shadow-sm">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-[0.22em] text-rose-500">Pendientes</p>
+                        <h3 class="mt-2 text-2xl font-black text-slate-950">Revision diaria</h3>
+                    </div>
+                    <div class="mt-5 h-72">
+                        <canvas data-epsas-chart='@json($secretariaPendingChart)'></canvas>
+                    </div>
+                </article>
+            </section>
+
             <section class="mt-6 grid gap-6 xl:grid-cols-[1fr_0.9fr]">
                 <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -116,6 +174,10 @@
                         <a href="{{ route('secretaria.reportes.index') }}" class="group rounded-[1.5rem] border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50">
                             <p class="text-sm font-black text-slate-950">Reportes ingresos</p>
                             <p class="mt-2 text-sm leading-6 text-slate-500">Controla cobranza, flujo mensual y resumen financiero.</p>
+                        </a>
+                        <a href="{{ route('secretaria.operaciones.index') }}" class="group rounded-[1.5rem] border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50">
+                            <p class="text-sm font-black text-slate-950">Atencion, caja y tecnicos</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-500">Abre caja, registra reclamos, deriva inspecciones y prepara comunicados.</p>
                         </a>
                     </div>
                 </div>
@@ -155,7 +217,7 @@
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-xs font-black uppercase tracking-[0.22em] text-emerald-600">Caja</p>
-                            <h3 class="mt-2 text-2xl font-black text-slate-950">Ultimos pagos registrados</h3>
+                            <h3 class="mt-2 text-2xl font-black text-slate-950">Ultimos ingresos registrados</h3>
                         </div>
                         <a href="{{ route('secretaria.cobros.index') }}" class="text-sm font-black text-emerald-700 hover:text-emerald-800">Abrir</a>
                     </div>

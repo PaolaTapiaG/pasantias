@@ -14,6 +14,7 @@
         ['label' => 'Medidores', 'route' => 'tecnico.medidores.index', 'match' => ['tecnico.medidores.*'], 'icon' => 'meter', 'group' => 'campo'],
         ['label' => 'Mantenimiento de red', 'route' => 'tecnico.mantenimiento.index', 'match' => ['tecnico.mantenimiento.*'], 'icon' => 'settings', 'group' => 'campo'],
         ['label' => 'Operacion del sistema', 'route' => 'tecnico.operacion.index', 'match' => ['tecnico.operacion.*'], 'icon' => 'power', 'group' => 'sistema'],
+        ['label' => 'Mapa operativo', 'route' => 'mapa-operativo.index', 'match' => ['mapa-operativo.*'], 'icon' => 'map', 'group' => 'sistema'],
         ['label' => 'Reportes tecnicos', 'route' => 'tecnico.reportes-tecnicos.index', 'match' => ['tecnico.reportes-tecnicos.*'], 'icon' => 'chart', 'group' => 'sistema'],
         ['label' => 'Gestion de incidencias', 'route' => 'tecnico.incidencias.index', 'match' => ['tecnico.incidencias.*'], 'icon' => 'incident', 'group' => 'sistema'],
     ];
@@ -39,15 +40,16 @@
         'spark' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75l1.5 4.5L18 9.75l-4.5 1.5L12 15.75l-1.5-4.5L6 9.75l4.5-1.5L12 3.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M18.5 4.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5z" />',
         'power' => '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v7" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.5a5.5 5.5 0 107.5 0" />',
         'incident' => '<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h10.5v10.5H6.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.25 9.25h5.5M9.25 12h5.5M9.25 14.75h3.5" />',
+        'map' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 5.75l4.5-1.5 4.5 1.5 3.5-1.25v13.75l-3.5 1.25-4.5-1.5-4.5 1.5V5.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.25 4.25v13.75M14.75 5.75V19.5" />',
         'logout' => '<path stroke-linecap="round" stroke-linejoin="round" d="M10.75 4.75H7A2.25 2.25 0 004.75 7v10A2.25 2.25 0 007 19.25h3.75" /><path stroke-linecap="round" stroke-linejoin="round" d="M14 15.25l3.5-3.5-3.5-3.5M17.25 11.75h-8.5" />',
     ];
 @endphp
 
-<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-slate-950/45 backdrop-blur-sm md:hidden"></div>
+<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-slate-950/45 backdrop-blur-sm lg:hidden"></div>
 
 <aside
     data-tech-sidebar
-    class="fixed inset-y-0 left-0 z-50 flex h-screen w-[min(20rem,calc(100vw-1rem))] -translate-x-full flex-col overflow-hidden border-r border-orange-300/25 bg-[linear-gradient(180deg,#ff8a1d_0%,#f97316_32%,#c2410c_100%)] text-white shadow-[0_30px_70px_rgba(194,65,12,0.35)] transition duration-300 ease-out sm:w-80 md:z-40 md:translate-x-0"
+    class="fixed inset-y-0 left-0 z-50 flex h-screen w-[min(20rem,calc(100vw-1rem))] -translate-x-full flex-col overflow-hidden border-r border-orange-300/25 bg-[linear-gradient(180deg,#ff8a1d_0%,#f97316_32%,#c2410c_100%)] text-white shadow-[0_30px_70px_rgba(194,65,12,0.35)] transition duration-300 ease-out sm:w-80 lg:z-40 lg:translate-x-0"
 >
     <div class="flex h-full w-full flex-col px-4 py-5">
         <div data-sidebar-header class="flex items-center justify-between gap-3 px-2">
@@ -81,7 +83,7 @@
                 <button
                     type="button"
                     data-sidebar-close
-                    class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white md:hidden"
+                    class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white lg:hidden"
                     aria-label="Cerrar menu"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -166,7 +168,7 @@
     ];
 @endphp
 
-<nav class="tech-mobile-dock md:hidden" aria-label="Navegacion tecnica movil">
+<nav class="tech-mobile-dock lg:hidden" aria-label="Navegacion tecnica movil">
     <div class="tech-mobile-dock__shell">
         <div class="tech-mobile-dock__curve"></div>
         @foreach ($mobileDock as $index => $item)

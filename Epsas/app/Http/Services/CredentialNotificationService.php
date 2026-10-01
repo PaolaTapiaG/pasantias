@@ -2,16 +2,12 @@
 
 namespace App\Http\Services;
 
-use App\Mail\EmployeeWelcomeMail;
-use App\Mail\RecoveryCodeMail;
 use App\Models\User;
-use Illuminate\Support\Facades\Log;
 
 class CredentialNotificationService
 {
     public function __construct(
-        private SmsGatewayService $smsGateway,
-        private RuntimeMailService $runtimeMailService
+        private SmsGatewayService $smsGateway
     )
     {
     }
@@ -21,8 +17,6 @@ class CredentialNotificationService
         $user->loadMissing('persona');
 
         $smsSent = false;
-        $emailSent = false;
-
         if ($user->persona?->telefono) {
             $sms = $this->smsGateway->send(
                 $user->persona->telefono,
@@ -35,17 +29,8 @@ class CredentialNotificationService
             $smsSent = $sms->status !== 'failed';
         }
 
-        if ($user->email) {
-            $emailSent = $this->sendEmail(
-                $user->email,
-                new EmployeeWelcomeMail($user, $temporaryPassword),
-                'employee_welcome'
-            );
-        }
-
         return [
             'sms' => $smsSent,
-            'email' => $emailSent,
         ];
     }
 
@@ -54,8 +39,6 @@ class CredentialNotificationService
         $user->loadMissing('persona');
 
         $smsSent = false;
-        $emailSent = false;
-
         if ($user->persona?->telefono) {
             $sms = $this->smsGateway->send(
                 $user->persona->telefono,
@@ -68,34 +51,8 @@ class CredentialNotificationService
             $smsSent = $sms->status !== 'failed';
         }
 
-        if ($user->email) {
-            $emailSent = $this->sendEmail(
-                $user->email,
-                new RecoveryCodeMail($user, $code),
-                'recovery_code'
-            );
-        }
-
         return [
             'sms' => $smsSent,
-            'email' => $emailSent,
         ];
-    }
-
-    private function sendEmail(string $recipient, object $mailable, string $type): bool
-    {
-        try {
-            $this->runtimeMailService->send($recipient, $mailable);
-
-            return true;
-        } catch (\Throwable $exception) {
-            Log::error('[MAIL DELIVERY ERROR]', [
-                'type' => $type,
-                'recipient' => $recipient,
-                'error' => $exception->getMessage(),
-            ]);
-
-            return false;
-        }
     }
 }

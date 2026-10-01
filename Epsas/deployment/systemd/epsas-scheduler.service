@@ -1,0 +1,15 @@
+[Unit]
+Description=EPSAS Laravel scheduler
+After=network.target redis-server.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+WorkingDirectory=/var/www/epsas/current
+ExecStart=/usr/bin/php artisan schedule:work
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

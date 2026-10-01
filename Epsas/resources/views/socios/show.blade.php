@@ -14,6 +14,9 @@
                     <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">{{ $socio->persona?->nombre_completo }}</h1>
                 </div>
                 <div class="flex gap-3">
+                    <a href="{{ route('admin.socios.carnet', $socio) }}" target="_blank" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                        Imprimir carnet
+                    </a>
                     <a href="{{ route('admin.socios.edit', $socio) }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
                         Editar
                     </a>
@@ -28,6 +31,13 @@
             <div class="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
                 <section class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                     <div class="flex flex-wrap items-center gap-3">
+                        @if ($socio->persona?->foto_url)
+                            <img src="{{ $socio->persona->foto_url }}" alt="Foto del socio" class="h-20 w-20 rounded-[1.5rem] object-cover ring-1 ring-slate-200">
+                        @else
+                            <div class="flex h-20 w-20 items-center justify-center rounded-[1.5rem] bg-blue-50 text-xl font-bold text-blue-700 ring-1 ring-blue-100">
+                                {{ strtoupper(substr($socio->persona?->nombres ?? 'S', 0, 1)) }}
+                            </div>
+                        @endif
                         <h2 class="text-xl font-semibold text-slate-900">Informacion general</h2>
                         <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $socio->oculto ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' }}">
                             {{ $socio->oculto ? 'Oculto' : ucfirst($socio->estado) }}

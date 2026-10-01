@@ -16,11 +16,18 @@ class MetodoPago extends Model
         'nombre',
         'descripcion',
         'requiere_referencia',
+        'requiere_caja_abierta',
+        'es_online',
+        'requiere_conciliacion',
+        'origen_predeterminado',
         'estado',
     ];
 
     protected $casts = [
         'requiere_referencia' => 'boolean',
+        'requiere_caja_abierta' => 'boolean',
+        'es_online' => 'boolean',
+        'requiere_conciliacion' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -43,5 +50,10 @@ class MetodoPago extends Model
     public function getEsEfectivoAttribute(): bool
     {
         return str_contains(mb_strtolower($this->nombre ?? ''), 'efectivo');
+    }
+
+    public function getEsQrAttribute(): bool
+    {
+        return str_contains(mb_strtolower($this->nombre ?? ''), 'qr');
     }
 }

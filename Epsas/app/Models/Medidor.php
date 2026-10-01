@@ -17,6 +17,8 @@ class Medidor extends Model
         'marca',
         'modelo',
         'fecha_instalacion',
+        'latitud',
+        'longitud',
         'estado',
         'id_socio',
         'id_empleado_instalador',
@@ -24,6 +26,8 @@ class Medidor extends Model
 
     protected $casts = [
         'fecha_instalacion' => 'date',
+        'latitud' => 'decimal:7',
+        'longitud' => 'decimal:7',
     ];
 
     public function socio(): BelongsTo

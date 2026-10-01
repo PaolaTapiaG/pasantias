@@ -8,6 +8,7 @@
     $headerRole = $headerRole ?? 'Usuario';
     $companyName = $companyName ?? (($sharedCompanySettings['company_name'] ?? null) ?: 'EPSAS');
     $isSecretaryHeader = $authUser?->hasRole('secretaria');
+    $showHeaderNotifications = ($showHeaderNotifications ?? true) && ! (bool) ($authUser?->must_change_password ?? false);
     $headerAccentClass = $headerAccentClass ?? ($isSecretaryHeader ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300');
     $avatarAccentClass = $avatarAccentClass ?? ($isSecretaryHeader ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200');
     $readingsNotificationUrl = $isSecretaryHeader && !$authUser?->hasRole('administrador')
@@ -33,7 +34,8 @@
         <!-- Sección derecha: Notificaciones, Modo oscuro y Usuario -->
         <div data-header-actions class="flex w-full min-w-0 items-center justify-end gap-3 sm:w-auto">
             <!-- Notificaciones -->
-            <div 
+            @if ($showHeaderNotifications)
+            <div
                 data-admin-notifications 
                 data-notifications-url="{{ route('api.admin.notifications', [], false) }}"
                 class="relative"
@@ -151,6 +153,8 @@
             </div>
 
             <!-- Botón Modo Oscuro/Claro - Solo ícono -->
+            @endif
+
             <button 
                 type="button" 
                 data-theme-toggle-header
@@ -221,7 +225,12 @@
                     </a>
                 `;
 
-                const render = (data) => {
+                let intervalId = null;
+                let detailLoadedAt = 0;
+
+                const withDetail = () => `${url}${url.includes('?') ? '&' : '?'}detail=1`;
+
+                const renderCounts = (data) => {
                     const counts = data.counts || {};
                     const qrPending = Number(counts.qr_pendientes || 0);
                     const readings = Number(counts.lecturas_hoy || 0);
@@ -233,33 +242,81 @@
 
                     badge.textContent = total > 99 ? '99+' : total;
                     badge.classList.toggle('is-hidden', total <= 0);
+                };
 
+                const renderLists = (data) => {
                     const qrItems = data.items?.qr || [];
                     const readingItems = data.items?.lecturas || [];
                     listQr.innerHTML = qrItems.length ? qrItems.map(item).join('') : empty('No hay pagos QR pendientes.');
                     listReadings.innerHTML = readingItems.length ? readingItems.map(item).join('') : empty('No hay lecturas cargadas hoy.');
                 };
 
-                const load = async () => {
-                    try {
-                        const response = await fetch(url, {
-                            headers: { Accept: 'application/json' },
-                            credentials: 'same-origin',
-                        });
+                const requestNotifications = async (detail = false) => {
+                    const response = await fetch(detail ? withDetail() : url, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin',
+                    });
 
-                        if (response.ok) {
-                            render(await response.json());
+                    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+                        return null;
+                    }
+
+                    return response.json();
+                };
+
+                const loadCounts = async () => {
+                    if (document.hidden) {
+                        return;
+                    }
+
+                    try {
+                        const data = await requestNotifications(false);
+
+                        if (data) {
+                            renderCounts(data);
+                        }
+                    } catch (error) {
+                        console.warn('No se pudieron cargar notificaciones.', error);
+                        stopPolling();
+                        window.setTimeout(startPolling, 120000);
+                    }
+                };
+
+                const loadDetails = async () => {
+                    try {
+                        const data = await requestNotifications(true);
+
+                        if (data) {
+                            renderCounts(data);
+                            renderLists(data);
+                            detailLoadedAt = Date.now();
                         }
                     } catch (error) {
                         console.warn('No se pudieron cargar notificaciones.', error);
                     }
                 };
 
+                const startPolling = () => {
+                    if (intervalId) {
+                        return;
+                    }
+
+                    loadCounts();
+                    intervalId = window.setInterval(loadCounts, 120000);
+                };
+
+                const stopPolling = () => {
+                    if (intervalId) {
+                        window.clearInterval(intervalId);
+                        intervalId = null;
+                    }
+                };
+
                 toggle.addEventListener('click', () => {
                     const isHidden = panel.classList.toggle('is-hidden');
                     toggle.setAttribute('aria-expanded', String(!isHidden));
-                    if (!isHidden) {
-                        load();
+                    if (!isHidden && Date.now() - detailLoadedAt > 60000) {
+                        loadDetails();
                     }
                 });
 
@@ -270,8 +327,24 @@
                     }
                 });
 
-                load();
-                window.setInterval(load, 45000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        stopPolling();
+                    } else {
+                        startPolling();
+                    }
+                });
+
+                const scheduleInitialPolling = () => {
+                    if ('requestIdleCallback' in window) {
+                        window.requestIdleCallback(startPolling, { timeout: 2500 });
+                        return;
+                    }
+
+                    window.setTimeout(startPolling, 1500);
+                };
+
+                scheduleInitialPolling();
             })();
 
             // Script para el botón de tema en header

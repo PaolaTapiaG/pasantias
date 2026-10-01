@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MedidorAnomalia extends Model
 {
+    use CachesOperationalRouteBinding;
+
     protected $table = 'medidor_anomalias';
     protected $primaryKey = 'id_anomalia';
 
@@ -55,10 +57,6 @@ class MedidorAnomalia extends Model
             return $this->evidencia_path;
         }
 
-        if (Str::startsWith($this->evidencia_path, 'storage/')) {
-            return asset($this->evidencia_path);
-        }
-
-        return Storage::disk('public')->url($this->evidencia_path);
+        return route('private-media.anomaly-evidence', $this);
     }
 }

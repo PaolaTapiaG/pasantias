@@ -9,12 +9,22 @@
         ['label' => 'Tarifas', 'route' => 'admin.tarifas.index', 'match' => ['admin.tarifas.*'], 'icon' => 'receipt'],
         ['label' => 'Medidores', 'route' => 'tecnico.medidores.index', 'match' => ['admin.medidores.*', 'tecnico.medidores.*'], 'icon' => 'meter'],
         ['label' => 'Lecturaciones', 'route' => 'tecnico.lecturas.index', 'match' => ['tecnico.lecturas.*'], 'icon' => 'document'],
-        ['label' => 'Facturacion', 'route' => 'secretaria.facturas.index', 'match' => ['secretaria.facturas.*'], 'icon' => 'invoice'],
-        ['label' => 'Cobros', 'route' => 'secretaria.cobros.index', 'match' => ['secretaria.cobros.*'], 'icon' => 'receipt'],
+        ['label' => 'Mapa operativo', 'route' => 'mapa-operativo.index', 'match' => ['mapa-operativo.*'], 'icon' => 'map'],
+        ['label' => 'Atencion de caja', 'route' => 'secretaria.operaciones.index', 'match' => ['secretaria.operaciones.*', 'secretaria.cobros.*', 'secretaria.facturas.*'], 'icon' => 'receipt'],
         ['label' => 'Pagos QR', 'route' => 'secretaria.ordenes-pago.index', 'match' => ['secretaria.ordenes-pago.*'], 'icon' => 'receipt'],
         ['label' => 'Gastos', 'route' => 'admin.gastos.index', 'match' => ['admin.gastos.*'], 'icon' => 'receipt'],
         ['label' => 'Reportes', 'route' => 'secretaria.reportes.index', 'match' => ['secretaria.reportes.*'], 'icon' => 'document'],
-        ['label' => 'Configuracion', 'route' => 'admin.configuracion.index', 'match' => ['admin.configuracion.*'], 'icon' => 'settings'],
+        ['label' => 'Perfil', 'route' => 'admin.perfil.index', 'match' => ['admin.perfil.*'], 'icon' => 'users'],
+        ['label' => 'Empresa y branding', 'route' => 'admin.configuracion.empresa', 'match' => ['admin.configuracion.index', 'admin.configuracion.empresa', 'admin.configuracion.sms-gateway'], 'icon' => 'settings'],
+        ['label' => 'Carnetizacion', 'route' => 'admin.configuracion.carnet', 'match' => ['admin.configuracion.carnet'], 'icon' => 'shield'],
+    ];
+
+    $adminMobileNav = [
+        ['label' => 'Menu', 'route' => null, 'icon' => 'dashboard', 'action' => 'open'],
+        ['label' => 'Inicio', 'route' => 'dashboard', 'match' => ['dashboard'], 'icon' => 'dashboard'],
+        ['label' => 'Socios', 'route' => 'admin.socios.index', 'match' => ['admin.socios.*'], 'icon' => 'contacts'],
+        ['label' => 'Caja', 'route' => 'secretaria.operaciones.index', 'match' => ['secretaria.operaciones.*', 'secretaria.cobros.*', 'secretaria.facturas.*'], 'icon' => 'receipt'],
+        ['label' => 'Ajustes', 'route' => 'admin.configuracion.empresa', 'match' => ['admin.configuracion.*', 'admin.perfil.*'], 'icon' => 'settings'],
     ];
 
     $iconPaths = [
@@ -27,16 +37,17 @@
         'receipt' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 4.75h9a1.75 1.75 0 011.75 1.75v10.75l-2.25-1.5-2.25 1.5-2.25-1.5-2.25 1.5-2.25-1.5-2.25 1.5V6.5A1.75 1.75 0 017.5 4.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.5h6M9 11.5h6" />',
         'invoice' => '<path stroke-linecap="round" stroke-linejoin="round" d="M7.75 3.75h6.5l3 3v10.5a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 016.25 17.25v-12A1.5 1.5 0 017.75 3.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 3.75v3h3M9 10h6M9 13h6M9 16h3" />',
         'meter' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 18.25h12.5V9.5a6.25 6.25 0 10-12.5 0v8.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12l2.5-2.5" /><path stroke-linecap="round" stroke-linejoin="round" d="M8.75 18.25v-1.5m6.5 1.5v-1.5" />',
+        'map' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5.75 5.75l4.5-1.5 4.5 1.5 3.5-1.25v13.75l-3.5 1.25-4.5-1.5-4.5 1.5V5.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.25 4.25v13.75M14.75 5.75V19.5" />',
         'logout' => '<path stroke-linecap="round" stroke-linejoin="round" d="M10.75 4.75H7A2.25 2.25 0 004.75 7v10A2.25 2.25 0 007 19.25h3.75" /><path stroke-linecap="round" stroke-linejoin="round" d="M14 15.25l3.5-3.5-3.5-3.5M17.25 11.75h-8.5" />',
     ];
 @endphp
 
-<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-slate-950/45 backdrop-blur-sm md:hidden"></div>
+<div data-sidebar-overlay class="fixed inset-0 z-40 hidden bg-slate-950/45 backdrop-blur-sm lg:hidden"></div>
 
 <button
     type="button"
     data-sidebar-open
-    class="fixed left-4 top-4 z-[72] flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-slate-900/95 text-white shadow-[0_18px_35px_rgba(15,23,42,0.28)] backdrop-blur-sm md:hidden"
+    class="admin-sidebar-open-button fixed left-4 top-4 z-[72] flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-slate-900/95 text-white shadow-[0_18px_35px_rgba(15,23,42,0.28)] backdrop-blur-sm lg:hidden"
     aria-label="Abrir menu"
 >
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -47,7 +58,8 @@
 <aside
     id="admin-sidebar"
     data-admin-sidebar
-    class="fixed inset-y-0 left-0 z-50 flex h-screen w-72 shrink-0 -translate-x-full border-r border-white/10 bg-[linear-gradient(180deg,#255fbd_0%,#1f54b0_52%,#183f8c_100%)] text-white shadow-[0_20px_45px_rgba(17,55,120,0.28)] transition duration-300 ease-out md:z-40 md:translate-x-0"
+    style="background-color: #1d4fb6; background-image: none;"
+    class="fixed inset-y-0 left-0 z-50 flex h-screen w-72 shrink-0 -translate-x-full border-r border-white/10 text-white shadow-[0_20px_45px_rgba(17,55,120,0.28)] transition duration-300 ease-out lg:z-40 lg:translate-x-0"
 >
     <div class="flex h-full w-full flex-col overflow-hidden px-4 py-5">
         <div data-sidebar-header class="flex items-center justify-between gap-3 px-2">
@@ -81,7 +93,7 @@
                 <button
                     type="button"
                     data-sidebar-close
-                    class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white md:hidden"
+                    class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white lg:hidden"
                     aria-label="Cerrar menu"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -151,3 +163,44 @@
         </div>
     </div>
 </aside>
+
+<nav class="tech-mobile-dock admin-mobile-dock lg:hidden" aria-label="Navegacion administrativa movil">
+    <div class="tech-mobile-dock__shell">
+        <div class="tech-mobile-dock__curve"></div>
+        @foreach ($adminMobileNav as $index => $item)
+            @php
+                $isActive = !empty($item['route']) && request()->routeIs(...($item['match'] ?? [$item['route']]));
+                $isCenter = $index === 2;
+            @endphp
+
+            @if (($item['action'] ?? null) === 'open')
+                <button
+                    type="button"
+                    data-sidebar-open
+                    class="tech-mobile-dock__item {{ $isCenter ? 'tech-mobile-dock__item--center' : '' }}"
+                    aria-label="Abrir menu administrativo"
+                >
+                    <span class="tech-mobile-dock__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.75 6.75h14.5M4.75 12h14.5M4.75 17.25h14.5" />
+                        </svg>
+                    </span>
+                    <span class="tech-mobile-dock__label">{{ $item['label'] }}</span>
+                </button>
+            @else
+                <a
+                    href="{{ route($item['route']) }}"
+                    class="tech-mobile-dock__item {{ $isCenter ? 'tech-mobile-dock__item--center' : '' }} {{ $isActive ? 'tech-mobile-dock__item--active' : '' }}"
+                    aria-current="{{ $isActive ? 'page' : 'false' }}"
+                >
+                    <span class="tech-mobile-dock__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            {!! $iconPaths[$item['icon']] !!}
+                        </svg>
+                    </span>
+                    <span class="tech-mobile-dock__label">{{ $item['label'] }}</span>
+                </a>
+            @endif
+        @endforeach
+    </div>
+</nav>

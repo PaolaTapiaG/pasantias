@@ -34,11 +34,7 @@
                             @endforeach
 
                             <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#475569;">
-                                Si necesitas reenviar los documentos, puedes entrar al portal o solicitar soporte a administracion.
-                            </p>
-
-                            <p style="margin:24px 0 0;">
-                                <a href="{{ $orderUrl }}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:800;padding:14px 22px;border-radius:16px;">Ver orden de pago</a>
+                                Si necesitas reenviar los documentos, solicita soporte a administracion.
                             </p>
                         </td>
                     </tr>

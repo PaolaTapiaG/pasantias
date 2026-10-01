@@ -19,6 +19,12 @@ class DatabaseSeeder extends Seeder
         // Ejecutar seeders de roles y permisos primero
         $this->call(RolesAndPermissionsSeeder::class);
 
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->warn('Se omitieron las cuentas de demostracion fuera de local/testing.');
+
+            return;
+        }
+
         User::query()->updateOrCreate(
             ['email' => 'test@example.com'],
             [
@@ -33,6 +39,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Carlos Alberto Mamani',
                 'password' => Hash::make('Admin2025!'),
+                'must_change_password' => true,
             ]
         );
         $adminUser->assignRole('administrador');
@@ -42,6 +49,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Rosa Elena Flores',
                 'password' => Hash::make('Secret2025!'),
+                'must_change_password' => true,
             ]
         );
         $secretariaUser->assignRole('secretaria');
@@ -51,6 +59,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Pedro Luis Condori',
                 'password' => Hash::make('Tecnic2025!'),
+                'must_change_password' => true,
             ]
         );
         $tecnicoUser->assignRole('tecnico');

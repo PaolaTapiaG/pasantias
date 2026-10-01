@@ -40,11 +40,7 @@
                             @endforeach
 
                             <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#475569;">
-                                La factura fiscal electronica debe generarse despues de integrar el servicio del SIN. Mientras tanto, este correo confirma la aprobacion operativa del pago y deja disponible el detalle en el portal.
-                            </p>
-
-                            <p style="margin:24px 0 0;">
-                                <a href="{{ $orderUrl }}" style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;font-weight:800;padding:14px 22px;border-radius:16px;">Ver orden de pago</a>
+                                La factura fiscal electronica debe generarse despues de integrar el servicio del SIN. Este correo confirma la aprobacion operativa del pago.
                             </p>
                         </td>
                     </tr>

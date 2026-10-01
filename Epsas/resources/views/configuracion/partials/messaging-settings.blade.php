@@ -36,13 +36,13 @@
             </div>
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Contrasena del gateway</label>
-                <input name="sms_gateway_password" value="{{ old('sms_gateway_password', $messaging['sms_gateway_password'] ?? '') }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                <input name="sms_gateway_password" type="password" value="{{ old('sms_gateway_password') }}" placeholder="{{ filled($messaging['sms_gateway_password'] ?? null) ? 'Configurada; deja vacio para conservarla' : '' }}" autocomplete="new-password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
             </div>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Token/API key</label>
-                <input name="sms_gateway_api_key" value="{{ old('sms_gateway_api_key', $messaging['sms_gateway_api_key'] ?? '') }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                <input name="sms_gateway_api_key" type="password" value="{{ old('sms_gateway_api_key') }}" placeholder="{{ filled($messaging['sms_gateway_api_key'] ?? null) ? 'Configurada; deja vacio para conservarla' : '' }}" autocomplete="new-password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
             </div>
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Device ID</label>
@@ -54,48 +54,18 @@
     <div class="border-t border-slate-200 pt-6 dark:border-slate-700">
         <h3 class="theme-text text-lg font-semibold text-slate-900">Correo real</h3>
         <div class="mt-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold leading-6 text-orange-900">
-            Si el mailer esta en "Solo log", Laravel guarda el correo internamente pero no lo entrega a Gmail. Para enviar PDFs adjuntos usa SMTP real o Brevo API.
+            El envio real usa Brevo API. La clave y el remitente deben estar configurados antes de enviar documentos.
         </div>
         <div class="mt-5 grid gap-5">
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Mailer</label>
                 <select name="mail_mailer" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-                    <option value="log" @selected(old('mail_mailer', $mail['mailer'] ?? 'log') === 'log')>Solo log</option>
-                    <option value="smtp" @selected(old('mail_mailer', $mail['mailer'] ?? 'log') === 'smtp')>SMTP real</option>
-                    <option value="brevo_api" @selected(old('mail_mailer', $mail['mailer'] ?? 'log') === 'brevo_api')>Brevo API</option>
+                    <option value="brevo_api" @selected(old('mail_mailer', $mail['mailer'] ?? 'brevo_api') === 'brevo_api')>Brevo API</option>
                 </select>
             </div>
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Brevo API key</label>
-                <input name="mail_api_key" value="{{ old('mail_api_key', $mail['api_key'] ?? '') }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-            </div>
-            <div>
-                <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">SMTP host</label>
-                <input name="mail_host" value="{{ old('mail_host', $mail['host'] ?? '') }}" placeholder="smtp-relay.brevo.com" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-            </div>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Puerto</label>
-                    <input name="mail_port" value="{{ old('mail_port', $mail['port'] ?? 587) }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-                </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Cifrado</label>
-                    <select name="mail_encryption" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-                        <option value="tls" @selected(old('mail_encryption', $mail['encryption'] ?? 'tls') === 'tls')>TLS</option>
-                        <option value="ssl" @selected(old('mail_encryption', $mail['encryption'] ?? 'tls') === 'ssl')>SSL</option>
-                        <option value="null" @selected(empty(old('mail_encryption', $mail['encryption'] ?? 'tls')))>Sin cifrado</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Usuario SMTP</label>
-                    <input name="mail_username" value="{{ old('mail_username', $mail['username'] ?? '') }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-                </div>
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Contrasena SMTP</label>
-                    <input name="mail_password" value="{{ old('mail_password', $mail['password'] ?? '') }}" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
-                </div>
+                <input name="mail_api_key" type="password" value="{{ old('mail_api_key') }}" placeholder="{{ filled($mail['api_key'] ?? null) ? 'Configurada; deja vacio para conservarla' : '' }}" autocomplete="new-password" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
             </div>
             <div class="grid gap-4 md:grid-cols-2">
                 <div>

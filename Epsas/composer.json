@@ -11,7 +11,10 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "dompdf/dompdf": "^3.1",
         "laravel/framework": "^12.0",
+        "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.10.1",
+        "league/commonmark": "^2.10.3",
+        "predis/predis": "^3.5",
         "resend/resend-laravel": "^1.3",
         "twilio/sdk": "^8.11"
     },
@@ -48,7 +51,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" \"php artisan app:local-db-wakeup --full --watch --interval=45\" --names=server,queue,logs,vite,db-wakeup --kill-others"
         ],
         "test": [
             "@php artisan config:clear --ansi",

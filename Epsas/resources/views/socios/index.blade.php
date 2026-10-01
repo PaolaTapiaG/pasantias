@@ -71,7 +71,7 @@
                         <option value="visibles" @selected(request('visibilidad') === 'visibles')>Solo visibles</option>
                         <option value="ocultos" @selected(request('visibilidad') === 'ocultos')>Solo ocultos</option>
                     </select>
-                    <a href="{{ route('admin.socios.index') }}" class="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    <a href="{{ route('admin.socios.index') }}" class="inline-flex h-11 w-full min-w-0 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 lg:w-auto">
                         Limpiar
                     </a>
                 </form>
@@ -134,6 +134,9 @@
                                                 </a>
                                                 <a href="{{ route('admin.socios.edit', $socio->id_socio) }}" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700">
                                                     Editar
+                                                </a>
+                                                <a href="{{ route('admin.socios.carnet', $socio->id_socio) }}" target="_blank" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                                                    Carnet
                                                 </a>
 
                                                 @if ($socio->estado !== 'activo')

@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Services\CredentialNotificationService;
+use App\Jobs\SendCredentialNotification;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\OperationalCache;
+use App\Support\UserSessionSecurity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -36,7 +41,7 @@ class AuthController extends Controller
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
         $loginValue = in_array($field, ['email', 'username'], true) ? mb_strtolower($login) : $login;
 
-        if (Auth::attempt([$field => $loginValue, 'password' => $credentials['password']], $request->boolean('remember'))) {
+        if (Auth::attempt([$field => $loginValue, 'password' => $credentials['password']], false)) {
             $request->session()->regenerate();
             $user = Auth::user()->loadMissing('persona');
             $roles = $user->cachedRoleNames();
@@ -70,7 +75,9 @@ class AuthController extends Controller
         $user = User::with('persona')->where($field, mb_strtolower($login))->first();
 
         if (!$user || (!$user->persona?->telefono && !$user->email)) {
-            return back()->withInput()->with('error', 'No se encontro un empleado con datos de contacto validos para enviar la recuperacion.');
+            return back()
+                ->withInput()
+                ->with('success', 'Si la cuenta existe y tiene un contacto valido, recibira un codigo de recuperacion.');
         }
 
         $code = (string) random_int(100000, 999999);
@@ -80,11 +87,11 @@ class AuthController extends Controller
             'email' => $user->email,
         ], now()->addMinutes(10));
 
-        $this->credentialNotifications->sendRecoveryCode($user, $code);
+        $this->sendRecoveryCodeAfterResponse((int) $user->id, $code);
 
         return redirect()
             ->route('password.reset.code', ['email' => $user->email])
-            ->with('success', 'Se envio el codigo de recuperacion por SMS y correo cuando fue posible.')
+            ->with('success', 'Si la cuenta existe y tiene un contacto valido, recibira un codigo de recuperacion.')
             ->with('sms_debug_code', app()->isLocal() ? $code : null);
     }
 
@@ -100,7 +107,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'codigo' => ['required', 'digits:6'],
-            'password' => ['required', 'confirmed', 'min:8'],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $payload = Cache::get($this->recoveryCacheKey($data['email']));
@@ -118,6 +125,7 @@ class AuthController extends Controller
             'must_change_password' => false,
         ]);
 
+        UserSessionSecurity::invalidateOtherSessions($user, null);
         Cache::forget($this->recoveryCacheKey($data['email']));
 
         return redirect()->route('login')->with('success', 'Contrasena restablecida correctamente. Ya puedes iniciar sesion.');
@@ -138,6 +146,43 @@ class AuthController extends Controller
         return 'auth:recovery:' . sha1(strtolower($email));
     }
 
+    private function sendRecoveryCodeAfterResponse(int $userId, string $code): void
+    {
+        $connection = $this->credentialQueueConnection();
+
+        if ($connection) {
+            SendCredentialNotification::dispatch($userId, 'recovery_code', $code)
+                ->onConnection($connection);
+
+            return;
+        }
+
+        app()->terminating(function () use ($userId, $code) {
+            try {
+                $user = User::query()->with('persona')->find($userId);
+
+                if ($user) {
+                    $this->credentialNotifications->sendRecoveryCode($user, $code);
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        });
+    }
+
+    private function credentialQueueConnection(): ?string
+    {
+        $default = (string) config('queue.default', 'sync');
+
+        if ($default !== 'sync') {
+            return $default;
+        }
+
+        return Cache::remember('queue.jobs-table-available', now()->addMinutes(30), fn () => Schema::hasTable('jobs'))
+            ? 'database'
+            : null;
+    }
+
     private function authUserCacheKey(User $user): string
     {
         return 'auth:user:' . str_replace('\\', '.', $user::class) . ':' . $user->getAuthIdentifier();
@@ -145,7 +190,7 @@ class AuthController extends Controller
 
     private function warmSharedSettings(): void
     {
-        Cache::remember('shared_company_settings', now()->addDays(7), fn () => SystemSetting::getValue('general', [
+        OperationalCache::rememberDomain('settings', 'shared.company-settings', fn () => SystemSetting::getValue('general', [
             'company_name' => 'EPSAS',
             'company_alias' => 'Panel administrativo',
             'company_logo' => null,
@@ -154,7 +199,7 @@ class AuthController extends Controller
 
     private function deferRoleWarmup($roles): void
     {
-        if (app()->runningInConsole() || !filter_var(env('ENABLE_LOGIN_WARMUP', false), FILTER_VALIDATE_BOOL)) {
+        if (app()->runningInConsole() || ! config('app.login_warmup_enabled')) {
             return;
         }
 

@@ -45,7 +45,13 @@
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoria</label>
-                            <input name="categoria" value="{{ old('categoria') }}" placeholder="Mantenimiento, combustible, oficina..." class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                            <select name="categoria" class="theme-soft h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                                <option value="">Selecciona una categoria</option>
+                                @foreach ($categoriasGasto as $categoriaGasto)
+                                    <option value="{{ $categoriaGasto }}" @selected(old('categoria') === $categoriaGasto)>{{ $categoriaGasto }}</option>
+                                @endforeach
+                            </select>
+                            @error('categoria') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Monto</label>
@@ -65,11 +71,27 @@
                             <h2 class="theme-text text-xl font-semibold text-slate-900">Historial de egresos</h2>
                             <p class="theme-muted mt-2 text-sm text-slate-500">Total del periodo: Bs {{ number_format((float) $totalGastos, 2) }}</p>
                         </div>
-                        <form method="GET" class="grid gap-3 sm:grid-cols-3">
+                        <form method="GET" class="grid gap-3 sm:grid-cols-4">
                             <input type="date" name="desde" value="{{ $desde }}" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
                             <input type="date" name="hasta" value="{{ $hasta }}" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                            <select name="categoria" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                                <option value="">Todas las categorias</option>
+                                @foreach ($categoriasGasto as $categoriaGasto)
+                                    <option value="{{ $categoriaGasto }}" @selected($categoria === $categoriaGasto)>{{ $categoriaGasto }}</option>
+                                @endforeach
+                            </select>
                             <button class="h-11 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white">Filtrar</button>
                         </form>
+                    </div>
+
+                    <div class="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        @foreach ($categoriasGasto as $categoriaGasto)
+                            @php($categoryTotal = (float) ($categoryTotals[$categoriaGasto] ?? 0))
+                            <article class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $categoriaGasto }}</p>
+                                <p class="mt-2 text-lg font-bold text-slate-900">Bs {{ number_format($categoryTotal, 2) }}</p>
+                            </article>
+                        @endforeach
                     </div>
 
                     <div class="mt-6 space-y-4">

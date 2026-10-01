@@ -36,7 +36,6 @@ class PaymentOrderInvoicesMail extends Mailable
             with: [
                 'orden' => $this->orden,
                 'facturas' => $this->facturas,
-                'orderUrl' => route('portal.ordenes.show', [$this->orden, $this->orden->access_token]),
             ],
         );
     }

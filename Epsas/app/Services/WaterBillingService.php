@@ -20,9 +20,19 @@ class WaterBillingService
         ];
     }
 
-    public function breakdown(float $consumoM3): array
+    public function breakdown(float $consumoM3, array $overrides = []): array
     {
-        $settings = $this->settings();
+        $settings = array_replace(
+            $this->settings(),
+            array_intersect_key($overrides, array_flip([
+                'included_m3',
+                'fixed_charge',
+                'excess_rate',
+                'cutoff_threshold_m3',
+                'reconnection_fee',
+                'sewer_fixed_charge',
+            ]))
+        );
         $includedM3 = $settings['included_m3'];
         $fixedCharge = $settings['fixed_charge'];
         $excessRate = $settings['excess_rate'];
@@ -47,6 +57,7 @@ class WaterBillingService
             'cutoff_threshold_m3' => $threshold,
             'cutoff_penalty' => $cutoffPenalty,
             'sewer_fixed_charge' => $sewerFixedCharge,
+            'reconnection_fee' => $reconnectionFee,
             'water_charge' => $waterCharge,
             'subtotal' => $subtotal,
             'total' => $total,

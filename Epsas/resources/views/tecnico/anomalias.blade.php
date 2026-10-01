@@ -13,7 +13,15 @@
 
             <form method="POST" action="{{ route('tecnico.anomalias.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4">
                 @csrf
-                <select name="id_medidor" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
+                <input
+                    type="search"
+                    data-meter-catalog-search
+                    data-url="{{ route('api.tecnico.medidores.catalogo', [], false) }}"
+                    data-target="anomalia-medidor"
+                    placeholder="Buscar medidor, socio o zona"
+                    class="theme-soft h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none"
+                >
+                <select id="anomalia-medidor" name="id_medidor" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">
                     <option value="">Seleccionar medidor</option>
                     @foreach ($medidoresDisponibles as $medidor)
                         <option value="{{ $medidor->id_medidor }}" @selected(old('id_medidor') == $medidor->id_medidor)>
@@ -89,4 +97,45 @@
             </div>
         </article>
     </section>
+
+    @push('scripts')
+    <script>
+        (() => {
+            const search = document.querySelector('[data-meter-catalog-search][data-target="anomalia-medidor"]');
+            const select = document.getElementById('anomalia-medidor');
+            if (!search || !select) return;
+
+            const escapeOption = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            })[char]);
+
+            const load = async (term) => {
+                if (term.length < 2) return;
+
+                const response = await fetch(`${search.dataset.url}?q=${encodeURIComponent(term)}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const placeholder = select.querySelector('option[value=""]')?.textContent || 'Seleccionar medidor';
+                select.innerHTML = `<option value="">${escapeOption(placeholder)}</option>` + (data.items || []).map((item) => `
+                    <option value="${escapeOption(item.value)}">${escapeOption(item.label)}</option>
+                `).join('');
+            };
+
+            let timer = null;
+            search.addEventListener('input', (event) => {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(() => load(event.target.value.trim()), 280);
+            });
+        })();
+    </script>
+    @endpush
 @endcomponent

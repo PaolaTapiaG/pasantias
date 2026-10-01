@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
 @section('title', 'Iniciar sesion - EPSAS')
 
@@ -118,16 +118,6 @@
                                 <p class="mt-2 text-xs text-red-500">{{ $message }}</p>
                             @enderror
                         </div>
-
-                        <label for="remember" class="flex items-center gap-3 text-sm text-slate-600">
-                            <input
-                                type="checkbox"
-                                id="remember"
-                                name="remember"
-                                class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-200"
-                            >
-                            <span>Recordarme</span>
-                        </label>
 
                         <div class="space-y-3 pt-2">
                             <button

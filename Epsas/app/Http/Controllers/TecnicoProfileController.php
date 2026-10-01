@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Persona;
+use App\Support\PrivateMedia;
+use App\Support\UserSessionSecurity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class TecnicoProfileController extends Controller
@@ -32,21 +34,23 @@ class TecnicoProfileController extends Controller
             $emailRules[] = Rule::unique('users', 'email')->ignore($user->id);
         }
 
+        $passwordRequired = (bool) $user->must_change_password;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => $emailRules,
             'phone' => ['nullable', 'string', 'max:30'],
             'photo' => ['nullable', 'image', 'max:2048'],
-            'current_password' => ['nullable', 'string'],
-            'new_password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ]);
+            'current_password' => [$passwordRequired ? 'required' : 'nullable', 'string'],
+            'new_password' => [$passwordRequired ? 'required' : 'nullable', 'confirmed', Password::defaults()],
+        ], $this->passwordValidationMessages());
 
         $userUpdates = [
             'name' => $data['name'],
             'email' => $email,
         ];
+        $passwordChanged = !empty($data['new_password']);
 
-        if (!empty($data['new_password'])) {
+        if ($passwordChanged) {
             if (empty($data['current_password']) || !Hash::check($data['current_password'], $user->password)) {
                 return back()->withErrors(['current_password' => 'La contrasena actual no es valida.']);
             }
@@ -65,17 +69,7 @@ class TecnicoProfileController extends Controller
             $photoPath = $persona->foto_path;
 
             if ($request->hasFile('photo') && $request->file('photo')->isValid()) {
-                if ($photoPath && Str::startsWith($photoPath, 'storage/')) {
-                    Storage::disk('public')->delete(Str::after($photoPath, 'storage/'));
-                }
-
-                $stored = $request->file('photo')->storeAs(
-                    'perfiles',
-                    'perfil_tecnico_' . now()->format('YmdHis') . '_' . Str::random(8) . '.' . strtolower($request->file('photo')->extension() ?: 'jpg'),
-                    'public'
-                );
-
-                $photoPath = 'storage/' . $stored;
+                $photoPath = PrivateMedia::storeImage($request->file('photo'), 'perfiles', 'perfil_tecnico', $photoPath);
             }
 
             $persona->update([
@@ -100,10 +94,19 @@ class TecnicoProfileController extends Controller
         }
 
         $user->forceFill($userUpdates)->save();
+        if ($passwordChanged) {
+            UserSessionSecurity::invalidateOtherSessions($user, $request, $data['new_password']);
+        }
+
         $user->flushAuthCache();
+        Cache::forget('auth:current-employee:'.$user->getKey());
         Cache::put($this->authUserCacheKey($user), $user, now()->addMinutes((int) config('auth.user_cache_minutes', 1440)));
 
-        return redirect()->route('tecnico.configuracion.index')->with('success', 'Perfil tecnico actualizado correctamente.');
+        $route = $passwordRequired && ! ($user->must_change_password)
+            ? 'dashboard'
+            : 'tecnico.configuracion.index';
+
+        return redirect()->route($route)->with('success', 'Perfil tecnico actualizado correctamente.');
     }
 
     private function splitName(string $fullName): array
@@ -125,5 +128,14 @@ class TecnicoProfileController extends Controller
     private function authUserCacheKey($user): string
     {
         return 'auth:user:' . str_replace('\\', '.', $user::class) . ':' . $user->getAuthIdentifier();
+    }
+
+    private function passwordValidationMessages(): array
+    {
+        return [
+            'current_password.required' => 'Debes escribir tu contrasena actual para cambiar la contrasena temporal.',
+            'new_password.required' => 'Debes escribir una nueva contrasena para desbloquear el acceso.',
+            'new_password.confirmed' => 'La nueva contrasena y la confirmacion deben ser iguales.',
+        ];
     }
 }

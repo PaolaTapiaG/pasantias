@@ -6,98 +6,49 @@ use App\Mail\PaymentOrderInvoicesMail;
 use App\Http\Services\RuntimeMailService;
 use App\Models\Factura;
 use App\Models\OrdenPago;
-use App\Models\Socio;
 use App\Models\SystemSetting;
-use App\Services\BillingAutomationService;
 use App\Services\PaymentOrderService;
 use App\Services\WaterBillingService;
+use App\Support\InvoiceBranding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PaymentOrderController extends Controller
 {
     public function __construct(
         private PaymentOrderService $paymentOrders,
-        private BillingAutomationService $billingAutomation,
         private WaterBillingService $waterBilling,
         private RuntimeMailService $runtimeMailService
     ) {
     }
 
-    public function storePortal(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'numero_socio' => ['required', 'string', 'max:80'],
-            'hasta_factura_id' => ['required', 'integer', 'exists:facturas,id_factura'],
-        ], [
-            'hasta_factura_id.required' => 'Selecciona hasta que factura deseas pagar.',
-        ]);
-
-        $socio = Socio::query()
-            ->where('numero_socio', $data['numero_socio'])
-            ->firstOrFail();
-
-        $this->billingAutomation->ensureSocioInvoices($socio->id_socio);
-
-        try {
-            $orden = $this->paymentOrders->createSequentialUntilFactura($socio, (int) $data['hasta_factura_id']);
-        } catch (\Throwable $exception) {
-            return back()->withInput()->with('error', $exception->getMessage());
-        }
-
-        return redirect()
-            ->route('portal.ordenes.show', [$orden, $orden->access_token])
-            ->with('success', 'Orden generada. Paga el monto exacto y sube tu comprobante.');
-    }
-
-    public function showPortal(OrdenPago $ordenPago, string $token): View
-    {
-        $this->authorizePublicAccess($ordenPago, $token);
-
-        $ordenPago->load(['socio.persona', 'socio.medidorActivo', 'detalles']);
-
-        return view('portal.cliente.orden-pago', [
-            'company' => $this->companySettings(),
-            'orden' => $ordenPago,
-            'qrSvg' => $this->paymentOrders->staticQrSvg($ordenPago),
-            'financialEntities' => $this->paymentOrders->financialEntities(),
-        ]);
-    }
-
-    public function uploadProof(Request $request, OrdenPago $ordenPago, string $token): RedirectResponse
-    {
-        $this->authorizePublicAccess($ordenPago, $token);
-
-        $data = $request->validate([
-            'entidad_financiera' => ['required', 'string', Rule::in($this->paymentOrders->financialEntities())],
-            'comprobante_referencia' => ['required', 'string', 'min:4', 'max:120'],
-            'observaciones_cliente' => ['nullable', 'string', 'max:500'],
-            'comprobante' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
-        ]);
-
-        try {
-            $this->paymentOrders->uploadProof($ordenPago, $data, $request->file('comprobante'));
-        } catch (\Throwable $exception) {
-            return back()->withInput()->with('error', $exception->getMessage());
-        }
-
-        return redirect()
-            ->route('portal.ordenes.show', [$ordenPago, $token])
-            ->with('success', 'Comprobante enviado. Un administrador verificara el pago antes de marcar tus facturas como pagadas.');
-    }
-
     public function index(Request $request): View
+    {
+        return view('ordenes-pago.index', $this->paymentOrderIndexData($request));
+    }
+
+    public function warmIndexCache(): void
+    {
+        $this->paymentOrderIndexData(Request::create('/admin/ordenes-pago', 'GET'));
+    }
+
+    private function paymentOrderIndexData(Request $request): array
     {
         $estado = $request->query('estado', 'en_revision');
         $search = trim((string) $request->query('buscar', ''));
+        $search = strlen($search) >= 2 ? $search : '';
 
-        $orders = OrdenPago::query()
+        Cache::add('payment-orders:index:version', 1, now()->addYears(2));
+        $version = Cache::get('payment-orders:index:version', 1);
+        $cacheKey = 'payment-orders:index:v'.$version.':'.md5(json_encode($request->query()));
+
+        $orders = OperationalCache::rememberDomain('billing', $cacheKey, fn () => OrdenPago::query()
             ->with(['socio.persona', 'detalles'])
             ->when($estado !== '', fn ($query) => $query->where('estado', $estado))
             ->when($search !== '', function ($query) use ($search) {
@@ -114,28 +65,31 @@ class PaymentOrderController extends Controller
             ->orderByRaw("CASE estado WHEN 'en_revision' THEN 0 WHEN 'pendiente' THEN 1 WHEN 'rechazada' THEN 2 WHEN 'aprobada' THEN 3 ELSE 4 END")
             ->orderByDesc('created_at')
             ->simplePaginate(12)
-            ->withQueryString();
+            ->withPath(url('/admin/ordenes-pago'))
+            ->appends($request->query()));
 
-        $statsRow = OrdenPago::query()
-            ->selectRaw("COUNT(*) FILTER (WHERE estado = 'en_revision') as en_revision")
-            ->selectRaw("COUNT(*) FILTER (WHERE estado = 'pendiente') as pendientes")
-            ->selectRaw("COUNT(*) FILTER (WHERE estado = 'aprobada') as aprobadas")
-            ->selectRaw("COUNT(*) FILTER (WHERE estado = 'rechazada') as rechazadas")
-            ->first();
+        $stats = OperationalCache::rememberDomain('billing', 'payment-orders:index:stats:v'.$version, function () {
+            $statsRow = OrdenPago::query()
+                ->selectRaw("COUNT(*) FILTER (WHERE estado = 'en_revision') as en_revision")
+                ->selectRaw("COUNT(*) FILTER (WHERE estado = 'pendiente') as pendientes")
+                ->selectRaw("COUNT(*) FILTER (WHERE estado = 'aprobada') as aprobadas")
+                ->selectRaw("COUNT(*) FILTER (WHERE estado = 'rechazada') as rechazadas")
+                ->first();
 
-        $stats = [
-            'en_revision' => (int) ($statsRow->en_revision ?? 0),
-            'pendientes' => (int) ($statsRow->pendientes ?? 0),
-            'aprobadas' => (int) ($statsRow->aprobadas ?? 0),
-            'rechazadas' => (int) ($statsRow->rechazadas ?? 0),
-        ];
+            return [
+                'en_revision' => (int) ($statsRow->en_revision ?? 0),
+                'pendientes' => (int) ($statsRow->pendientes ?? 0),
+                'aprobadas' => (int) ($statsRow->aprobadas ?? 0),
+                'rechazadas' => (int) ($statsRow->rechazadas ?? 0),
+            ];
+        });
 
-        return view('ordenes-pago.index', [
+        return [
             'orders' => $orders,
             'stats' => $stats,
             'estado' => $estado,
             'search' => $search,
-        ]);
+        ];
     }
 
     public function show(OrdenPago $ordenPago): View
@@ -222,21 +176,6 @@ class PaymentOrderController extends Controller
             ->with('success', 'Orden rechazada. El cliente podra generar o reenviar un comprobante correcto.');
     }
 
-    private function authorizePublicAccess(OrdenPago $orden, string $token): void
-    {
-        abort_unless(hash_equals((string) $orden->access_token, $token), 404);
-    }
-
-    private function companySettings(): array
-    {
-        return SystemSetting::getValue('general', [
-            'company_name' => 'EPSAS',
-            'company_alias' => 'Servicio de agua potable',
-            'company_logo' => null,
-            'company_phone' => '(591) 678-4664',
-        ]);
-    }
-
     private function invoiceActionsForOrder(OrdenPago $orden): Collection
     {
         return $orden->detalles
@@ -310,6 +249,7 @@ class PaymentOrderController extends Controller
         $pendiente = round(max(0, (float) $factura->total - $pagado), 2);
         $subtotal = round((float) $factura->monto_consumo + (float) $factura->cargo_fijo - (float) $factura->descuentos, 2);
         $company = SystemSetting::getValue('general', []);
+        $company['company_logo'] = InvoiceBranding::approvedLogoPath($company);
 
         return [
             'factura' => $factura,
@@ -341,21 +281,7 @@ class PaymentOrderController extends Controller
 
     private function buildPdfLogoDataUri(array $company): ?string
     {
-        if (empty($company['company_logo'])) {
-            return null;
-        }
-
-        $relative = str_replace('storage/', '', $company['company_logo']);
-        $resolved = storage_path('app/public/' . $relative);
-
-        if (!file_exists($resolved) || !is_readable($resolved)) {
-            return null;
-        }
-
-        $mimeType = mime_content_type($resolved) ?: 'image/png';
-        $contents = @file_get_contents($resolved);
-
-        return $contents === false ? null : 'data:' . $mimeType . ';base64,' . base64_encode($contents);
+        return InvoiceBranding::dataUri($company);
     }
 
     private function whatsappUrl(?string $phone, string $message): ?string

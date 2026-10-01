@@ -1,153 +1,104 @@
-@php
-    $inicioCobro = $factura->fecha_inicio_cobro ?? $factura->periodo?->fecha_inicio;
-    $finCobro = $factura->fecha_fin_cobro ?? $factura->periodo?->fecha_fin;
-@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $factura->numero_factura }}</title>
+    <title>{{ $factura->numero_factura }} - {{ $company['company_name'] ?? 'EPSAS' }}</title>
+    @php($paper = request()->query('paper') === '58' ? '58' : '80')
     <style>
-        body { font-family: Arial, sans-serif; color: #123057; font-size: 12px; margin: 30px; }
-        .header { margin-bottom: 28px; }
-        .brand-line { height: 5px; width: 240px; background: #2f69b7; margin-bottom: 10px; }
-        .title { font-size: 38px; letter-spacing: 0.1em; color: #2f69b7; text-transform: lowercase; margin: 0; }
-        .muted { color: #5c78a2; font-size: 11px; }
-        .top-table, .summary-table, .reading-table { width: 100%; border-collapse: collapse; }
-        .top-table td { vertical-align: top; padding: 4px 0; }
-        .summary-table th, .summary-table td, .reading-table th, .reading-table td {
-            border: 1px solid #7aa2d8;
-            padding: 9px 10px;
+        @page { size: {{ $paper }}mm auto; margin: 3mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #eef2f5; color: #20252b; font-family: Arial, sans-serif; font-size: 11px; }
+        .print-toolbar { max-width: 820px; margin: 16px auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+        .print-toolbar select, .print-toolbar button { border: 1px solid #1f5d42; background: #fff; color: #1f5d42; padding: 9px 12px; border-radius: 4px; cursor: pointer; }
+        .print-toolbar button { background: #1f5d42; color: #fff; }
+        .invoice-sheet { width: 100%; max-width: 820px; margin: 0 auto 24px; padding: 22px 26px; background: #fff; border-top: 0; box-shadow: 0 2px 12px rgba(32, 37, 43, .12); }
+        .institution-header { display: table; width: 100%; border-bottom: 1px solid #8d9b92; padding-bottom: 12px; }
+        .institution-header > div { display: table-cell; vertical-align: middle; }
+        .institution-mark { width: 105px; text-align: center; }
+        .institution-mark img { display: block; max-width: 98px; max-height: 68px; margin: auto; }
+        .institution-mark strong { color: #1f5d42; font-size: 18px; }
+        .institution-copy { padding: 0 12px; color: #4d555c; line-height: 1.5; }
+        .institution-title { color: #1f5d42; font-size: 19px; font-weight: 700; text-transform: uppercase; }
+        .institution-subtitle { color: #20252b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .document-meta { width: 205px; border-left: 1px solid #cbd5d1; padding-left: 14px; line-height: 1.65; }
+        .document-label { color: #1f5d42; font-size: 16px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+        .identity-grid { display: table; width: 100%; margin: 14px 0; border: 1px solid #9aa9a1; }
+        .identity-grid > div { display: table-cell; width: 17%; padding: 6px 8px; border-right: 1px solid #d3dbd6; vertical-align: top; }
+        .identity-grid > div:last-child { border-right: 0; }
+        .identity-grid .identity-wide { width: 25%; }
+        .identity-grid span { display: block; color: #637269; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+        .identity-grid b { display: block; margin-top: 3px; font-size: 10px; }
+        .boleta-table { width: 100%; border-collapse: collapse; }
+        .boleta-table th { background: #e5eee9; color: #1f5d42; font-size: 9px; text-transform: uppercase; }
+        .boleta-table th, .boleta-table td { border: 1px solid #8d9b92; padding: 7px 8px; }
+        .reading-table td { height: 48px; text-align: center; }
+        .observation { border: 1px solid #8d9b92; border-top: 0; min-height: 28px; padding: 7px 8px; }
+        .charges-section { margin-top: 10px; }
+        .charges-table th:first-child, .charges-table td:first-child { text-align: left; }
+        .amount { text-align: right; white-space: nowrap; }
+        .subtotal-line { display: table; width: 55%; margin: 5px 0 0 auto; padding: 4px 6px; border-bottom: 1px solid #8d9b92; }
+        .subtotal-line span, .subtotal-line b { display: table-cell; }
+        .subtotal-line b { text-align: right; }
+        .current-total, .debt-total { display: table; width: 280px; margin: 8px 0 0 auto; border: 2px solid #1f5d42; padding: 8px 10px; color: #1f5d42; font-size: 13px; }
+        .current-total span, .current-total b, .debt-total span, .debt-total b { display: table-cell; }
+        .current-total b, .debt-total b { text-align: right; }
+        .debt-section { margin-top: 10px; }
+        .debt-section h2 { margin: 0 0 6px; color: #1f5d42; font-size: 14px; text-transform: uppercase; }
+        .debt-summary { margin-top: 5px; width: 55%; margin-left: auto; }
+        .debt-summary td, .debt-summary th { padding: 4px 6px; }
+        .cutoff-notice { margin-top: 7px; border: 1px solid #1f5d42; padding: 6px; color: #1f5d42; font-size: 9px; }
+        .empty-debt { text-align: center; color: #637269; }
+        .invoice-footer { margin-top: 10px; border-top: 1px solid #9aa9a1; padding-top: 6px; color: #637269; font-size: 9px; line-height: 1.35; }
+        .customer-notice { margin: 5px 0; border: 1px solid #1f5d42; padding: 6px; color: #1f5d42; font-weight: 700; }
+        .thermal-58 .institution-header > div, .thermal-58 .identity-grid > div { display: block; width: 100%; border: 0; }
+        .thermal-58 .institution-header > div { text-align: center; padding: 4px 0; }
+        .thermal-58 .document-meta { border-top: 1px solid #cbd5d1; border-left: 0; }
+        .thermal-58 .identity-grid > div { border-bottom: 1px solid #d3dbd6; }
+        .thermal-58 .identity-grid > div:last-child { border-bottom: 0; }
+        .thermal-58 .boleta-table th, .thermal-58 .boleta-table td { padding: 4px 3px; font-size: 8px; overflow-wrap: anywhere; }
+        .thermal-58 .reading-table, .thermal-58 .charges-table, .thermal-58 .debt-table { table-layout: fixed; }
+        .thermal-58 .reading-table th, .thermal-58 .reading-table td { font-size: 7px; }
+        .thermal-58 .current-total, .thermal-58 .debt-total { width: 100%; font-size: 10px; }
+        .thermal-58 .subtotal-line { width: 100%; }
+        .thermal-58 .debt-summary { width: 100%; }
+        .thermal-58 .cutoff-notice { font-size: 8px; }
+        .thermal-58 .debt-table th:nth-child(2), .thermal-58 .debt-table td:nth-child(2) { display: none; }
+        .thermal-58 .institution-title { font-size: 15px; }
+        .thermal-58 .institution-subtitle, .thermal-58 .institution-copy { font-size: 9px; }
+        .thermal-58 .document-label { font-size: 12px; }
+        .thermal-80 .invoice-sheet { padding: 12px 10px; }
+        .thermal-80 .boleta-table th, .thermal-80 .boleta-table td { padding: 5px 4px; font-size: 9px; }
+        .thermal-80 .debt-summary { width: 72%; }
+        .thermal-80 .subtotal-line { width: 72%; }
+        @media print {
+            body { background: #fff; color: #000; }
+            .print-toolbar { display: none; }
+            .invoice-sheet { margin: 0; max-width: none; padding: 0; border-top: 0; box-shadow: none; }
+            .institution-header, .boleta-table th, .boleta-table td, .identity-grid, .identity-grid > div, .observation, .invoice-footer, .customer-notice { border-color: #000; }
+            .institution-mark strong, .institution-title, .institution-subtitle, .document-label, .boleta-table th, .debt-section h2, .current-total, .debt-total { color: #000; }
+            .boleta-table th { background: #fff; }
+            .cutoff-notice { color: #000; }
+            .customer-notice { color: #000; }
         }
-        .summary-table th, .reading-table th {
-            color: #2f69b7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; background: #f4f8ff;
-        }
-        .text-right { text-align: right; }
-        .section-title { color: #2f69b7; font-size: 22px; margin: 0 0 12px; }
-        .totals { width: 280px; margin-left: auto; margin-top: 20px; }
-        .totals td { padding: 6px 0; }
-        .total-box { margin-top: 16px; border: 2px solid #2f69b7; padding: 10px 14px; font-size: 18px; font-weight: bold; color: #2f69b7; }
-        .logo-box { width: 82px; height: 82px; border-radius: 50%; border: 1px solid #a9bbd6; text-align: center; line-height: 82px; overflow: hidden; margin-left: auto; }
-        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
-        .spacer { height: 16px; }
-        @media print { .print-hidden { display: none !important; } body { margin: 18px; } }
     </style>
 </head>
-<body onload="window.print()">
-    @php
-        $logoUrl = !empty($company['company_logo']) ? asset($company['company_logo']) : null;
-    @endphp
-    <div class="print-hidden" style="margin-bottom:16px;">
-        <button onclick="window.print()">Imprimir</button>
+<body class="thermal-{{ $paper }}">
+    <div class="print-toolbar">
+        <label for="paper">Ancho</label>
+        <select id="paper" onchange="changePaper(this.value)">
+            <option value="80" @selected($paper === '80')>80 mm</option>
+            <option value="58" @selected($paper === '58')>58 mm</option>
+        </select>
+        <button type="button" onclick="window.print()">Imprimir termica</button>
     </div>
-    <div class="header">
-        <table class="top-table">
-            <tr>
-                <td style="width: 65%;">
-                    <div class="brand-line"></div>
-                    <h1 class="title">recibo</h1>
-                    <p class="muted">{{ $company['company_name'] ?? 'EPSAS' }} | Recibo electronico emitido el {{ optional($factura->fecha_emision)->format('d/m/Y') }}</p>
-                </td>
-                <td style="width: 35%;">
-                    <div class="logo-box">
-                        @if ($logoUrl)
-                            <img src="{{ $logoUrl }}" alt="Logo">
-                        @else
-                            LOGO
-                        @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <table class="top-table">
-        <tr>
-            <td style="width: 52%; padding-right: 16px;">
-                <p class="section-title">De</p>
-                <div>{{ $company['company_name'] ?? 'EPSAS' }}</div>
-                <div>{{ $company['address'] ?? 'Direccion pendiente' }}</div>
-                <div>{{ $company['company_phone'] ?: 'Telefono pendiente' }}</div>
-                <div>{{ $company['company_email'] ?: 'Correo pendiente' }}</div>
-            </td>
-            <td style="width: 48%;">
-                <table style="width: 100%;">
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">N° de recibo</td><td class="text-right">{{ $factura->numero_factura }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Fecha</td><td class="text-right">{{ optional($factura->fecha_emision)->format('d/m/Y') }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Codigo usuario</td><td class="text-right">{{ $billingBreakdown['codigo_usuario'] }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Periodo</td><td class="text-right">{{ $factura->periodo?->nombre }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Cobro real</td><td class="text-right">{{ optional($inicioCobro)->format('d/m/Y') }} - {{ optional($finCobro)->format('d/m/Y') }}</td></tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="top-table">
-        <tr>
-            <td style="width: 50%; padding-right: 16px;">
-                <p class="section-title">Facturar a</p>
-                <div>{{ $factura->socio?->persona?->nombre_completo }}</div>
-                <div>{{ $factura->socio?->direccion ?: 'Direccion pendiente' }}</div>
-                <div>{{ $factura->socio?->sector?->nombre ?: 'Sin sector' }}</div>
-            </td>
-            <td style="width: 50%;">
-                <p class="section-title">Enviar a</p>
-                <div>{{ $factura->socio?->persona?->email ?: 'Correo no registrado' }}</div>
-                <div>{{ $factura->socio?->persona?->telefono ?: 'Telefono no registrado' }}</div>
-                <div>Medidor: {{ $factura->lectura?->medidor?->numero_serie ?: 'Sin medidor' }}</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="reading-table">
-        <thead>
-            <tr>
-                <th>Lectura anterior</th>
-                <th>Lectura actual</th>
-                <th>Consumo m3</th>
-                <th>M3 excedente</th>
-                <th>Tarifa excedente</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ number_format((float) $billingBreakdown['previous_reading'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['current_reading'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['consumed_m3'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['excess_m3'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_rate'], 2) }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>Cant.</th>
-                <th>Descripcion</th>
-                <th class="text-right">Precio unitario</th>
-                <th class="text-right">Importe</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>1</td><td>Cargo fijo agua (0 a {{ number_format((float) $billingBreakdown['included_m3'], 0) }} m3)</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['fixed_charge'], 2) }}</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['fixed_charge'], 2) }}</td></tr>
-            <tr><td>{{ number_format((float) $billingBreakdown['excess_m3'], 2) }}</td><td>Excedente de consumo</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_rate'], 2) }}</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_charge'], 2) }}</td></tr>
-            <tr><td>1</td><td>Cargo fijo alcantarillado</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['sewer_fixed_charge'], 2) }}</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['sewer_fixed_charge'], 2) }}</td></tr>
-            <tr><td>1</td><td>Mora por saldo anterior</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['mora_saldo_anterior'], 2) }}</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['mora_saldo_anterior'], 2) }}</td></tr>
-            <tr><td>1</td><td>Multa corte / reconexion</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['cutoff_penalty'], 2) }}</td><td class="text-right">Bs {{ number_format((float) $billingBreakdown['cutoff_penalty'], 2) }}</td></tr>
-        </tbody>
-    </table>
-
-    <table class="totals">
-        <tr><td>Subtotal</td><td class="text-right">Bs {{ number_format((float) $resumenCobro['subtotal'], 2) }}</td></tr>
-        <tr><td>Total pagado</td><td class="text-right">Bs {{ number_format((float) $resumenCobro['pagado'], 2) }}</td></tr>
-        <tr><td>Saldo pendiente</td><td class="text-right">Bs {{ number_format((float) $resumenCobro['pendiente'], 2) }}</td></tr>
-    </table>
-
-    <div class="total-box">TOTAL: <span style="float:right;">Bs {{ number_format((float) $factura->total, 2) }}</span></div>
+    @include('facturas.partials.boleta-epsas')
+    <script>
+        function changePaper(value) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('paper', value);
+            window.location.href = url.toString();
+        }
+    </script>
 </body>
 </html>

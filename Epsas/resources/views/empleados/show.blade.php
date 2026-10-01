@@ -33,6 +33,12 @@
                 </div>
             @endif
 
+            @if ($errors->any())
+                <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                    {{ $errors->first() }}
+                </div>
+            @endif
+
             <div class="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
                 El empleado puede iniciar sesion con usuario <span class="font-semibold">{{ $empleado->user?->username ?: 'sin usuario' }}</span> o con correo <span class="font-semibold">{{ $empleado->user?->email ?: 'sin correo' }}</span>.
             </div>
@@ -70,19 +76,60 @@
                     <div class="mt-5 grid gap-4 sm:grid-cols-3">
                         <div class="rounded-2xl bg-slate-50 p-4">
                             <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Cobros</p>
-                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->cobros->count() }}</p>
+                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->cobros_count }}</p>
                         </div>
                         <div class="rounded-2xl bg-slate-50 p-4">
                             <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Lecturas</p>
-                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->lecturas->count() }}</p>
+                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->lecturas_count }}</p>
                         </div>
                         <div class="rounded-2xl bg-slate-50 p-4">
                             <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Instalaciones</p>
-                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->medidoresInstalados->count() }}</p>
+                            <p class="mt-2 text-2xl font-bold text-slate-900">{{ $empleado->medidores_instalados_count }}</p>
                         </div>
                     </div>
                 </section>
             </div>
+
+            <section class="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Egresos laborales</p>
+                        <h2 class="mt-1 text-xl font-semibold text-slate-900">Salario, bonos y aguinaldo</h2>
+                        <p class="mt-1 text-sm text-slate-500">Al registrar uno de estos pagos se agrega automaticamente al historial de egresos.</p>
+                    </div>
+                    <a href="{{ route('admin.gastos.index', ['categoria' => 'Pago de salarios']) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        Ver egresos
+                    </a>
+                </div>
+
+                <div class="mt-5 grid gap-4 lg:grid-cols-3">
+                    @foreach ([
+                        ['tipo' => 'salario', 'label' => 'Pago de salario', 'monto' => (float) $empleado->salario_base, 'help' => 'Salario base mensual del rol actual.'],
+                        ['tipo' => 'bono', 'label' => 'Bono laboral', 'monto' => (float) $empleado->bono_mensual, 'help' => 'Bono o incentivo asociado al empleado.'],
+                        ['tipo' => 'aguinaldo', 'label' => 'Aguinaldo', 'monto' => (float) $empleado->aguinaldo_anual, 'help' => 'Pago anual de aguinaldo configurado.'],
+                    ] as $item)
+                        <form method="POST" action="{{ route('admin.empleados.egreso-laboral', $empleado) }}" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            @csrf
+                            <input type="hidden" name="tipo_egreso" value="{{ $item['tipo'] }}">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-900">{{ $item['label'] }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">{{ $item['help'] }}</p>
+                                </div>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">Bs {{ number_format($item['monto'], 2) }}</span>
+                            </div>
+                            <div class="mt-4 grid gap-3">
+                                <input type="date" name="fecha_gasto" value="{{ now()->toDateString() }}" class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                                <input type="number" name="monto" min="0.01" step="0.01" value="{{ number_format($item['monto'], 2, '.', '') }}" class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                                <input type="text" name="descripcion" placeholder="Observacion opcional" class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm">
+                                <button class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                                    Registrar egreso
+                                </button>
+                            </div>
+                        </form>
+                    @endforeach
+                </div>
+            </section>
         </main>
     </div>
 </div>

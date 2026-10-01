@@ -16,6 +16,9 @@ class Lectura extends Model
         'lectura_anterior',
         'lectura_actual',
         'observaciones',
+        'latitud',
+        'longitud',
+        'evidencia_path',
         'id_medidor',
         'id_empleado',
     ];
@@ -25,6 +28,8 @@ class Lectura extends Model
         'lectura_anterior' => 'decimal:2',
         'lectura_actual' => 'decimal:2',
         'consumo_m3' => 'decimal:2',
+        'latitud' => 'decimal:7',
+        'longitud' => 'decimal:7',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

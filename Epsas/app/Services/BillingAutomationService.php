@@ -22,10 +22,17 @@ class BillingAutomationService
 
     public function ensureCurrentInvoices(?int $idSocio = null, bool $force = false): array
     {
+        $startedAt = microtime(true);
         $scope = $idSocio ? "socio:{$idSocio}" : 'global';
         $guardKey = 'billing:auto:' . $scope . ':' . now()->toDateString();
 
         if (!$force && Cache::has($guardKey)) {
+            $this->logTiming('billing.ensureCurrentInvoices.cached', $startedAt, [
+                'scope' => $scope,
+                'id_socio' => $idSocio,
+                'guard' => $guardKey,
+            ]);
+
             return [
                 'cached' => true,
                 'created' => 0,
@@ -38,6 +45,10 @@ class BillingAutomationService
 
             if ($this->globalIsCurrent($cutoff)) {
                 Cache::put($guardKey, true, now()->addHours(12));
+                $this->logTiming('billing.ensureCurrentInvoices.up_to_date.global', $startedAt, [
+                    'scope' => $scope,
+                    'id_socio' => $idSocio,
+                ]);
 
                 return [
                     'cached' => false,
@@ -50,6 +61,10 @@ class BillingAutomationService
 
         if (!$force && $idSocio && $this->socioIsCurrent($idSocio)) {
             Cache::put($guardKey, true, now()->addHours(2));
+            $this->logTiming('billing.ensureCurrentInvoices.up_to_date.socio', $startedAt, [
+                'scope' => $scope,
+                'id_socio' => $idSocio,
+            ]);
 
             return [
                 'cached' => false,
@@ -59,8 +74,18 @@ class BillingAutomationService
             ];
         }
 
-        $result = $this->syncInvoices($idSocio);
+        $result = DB::transaction(function () use ($idSocio) {
+            $this->lockBillingAutomation();
+
+            return $this->syncInvoices($idSocio);
+        }, 3);
         Cache::put($guardKey, true, now()->addHours($idSocio ? 2 : 12));
+        $this->logTiming('billing.ensureCurrentInvoices', $startedAt, [
+            'scope' => $scope,
+            'id_socio' => $idSocio,
+            'created' => $result['created'] ?? 0,
+            'skipped' => $result['skipped'] ?? 0,
+        ]);
 
         return $result + ['cached' => false];
     }
@@ -68,6 +93,13 @@ class BillingAutomationService
     public function ensureSocioInvoices(int $idSocio, bool $force = false): array
     {
         return $this->ensureCurrentInvoices($idSocio, $force);
+    }
+
+    private function logTiming(string $label, float $start, array $context = []): void
+    {
+        logger()->info($label, array_merge($context, [
+            'ms' => round((microtime(true) - $start) * 1000, 2),
+        ]));
     }
 
     public function monthlyPeriodFor(Carbon $date): PeriodoFacturacion
@@ -158,7 +190,7 @@ class BillingAutomationService
                     ->where('m.estado', '=', 'activo');
             })
             ->join('tarifas as t', 't.id_tarifa', '=', 's.id_tarifa')
-            ->where('s.estado', '!=', 'inactivo')
+            ->where('s.estado', 'activo')
             ->when($idSocio, fn ($query) => $query->where('s.id_socio', $idSocio))
             ->orderBy('s.id_socio')
             ->get([
@@ -167,11 +199,15 @@ class BillingAutomationService
                 's.fecha_registro',
                 'm.id_medidor',
                 'm.fecha_instalacion',
+                't.precio_m3_base',
+                't.consumo_minimo_m3',
+                't.cargo_fijo as tarifa_cargo_fijo',
             ]);
     }
 
     private function billingContext(Collection $socios, Carbon $cutoff): array
     {
+        $startedAt = microtime(true);
         $socioIds = $socios->pluck('id_socio')->map(fn ($id) => (int) $id)->values();
         $medidorIds = $socios->pluck('id_medidor')->filter()->map(fn ($id) => (int) $id)->values();
 
@@ -239,6 +275,11 @@ class BillingAutomationService
             ->pluck('saldo', 'id_socio')
             ->all();
 
+        $this->logTiming('billing.billingContext', $startedAt, [
+            'socios' => $socios->count(),
+            'socio_ids' => $socioIds->all(),
+        ]);
+
         return [
             'lastEnds' => $lastEnds,
             'invoicedMonths' => $invoicedMonths,
@@ -249,6 +290,7 @@ class BillingAutomationService
 
     private function syncSocio(object $socio, Carbon $cutoff, int $employeeId, int &$nextInvoiceSequence, array $context): array
     {
+        $startedAt = microtime(true);
         $created = 0;
         $skipped = 0;
         $idSocio = (int) $socio->id_socio;
@@ -291,7 +333,11 @@ class BillingAutomationService
                 continue;
             }
 
-            $breakdown = $this->waterBilling->breakdown((float) $lectura->consumo_m3);
+            $breakdown = $this->waterBilling->breakdown((float) $lectura->consumo_m3, [
+                'included_m3' => (float) $socio->consumo_minimo_m3,
+                'fixed_charge' => (float) $socio->tarifa_cargo_fijo,
+                'excess_rate' => (float) $socio->precio_m3_base,
+            ]);
             $recargoMora = ($runningBalance > 0 ? round($runningBalance * 0.02, 2) : 0) + $breakdown['cutoff_penalty'];
             $invoiceTotal = round($breakdown['water_charge'] + $breakdown['sewer_fixed_charge'] + $recargoMora, 2);
             $runningBalance = round($runningBalance + $invoiceTotal, 2);
@@ -308,6 +354,9 @@ class BillingAutomationService
                 'descuentos' => 0,
                 'precio_m3_aplicado' => $breakdown['excess_rate'],
                 'cargo_fijo_aplicado' => $breakdown['fixed_charge'],
+                'consumo_minimo_m3_aplicado' => $breakdown['included_m3'],
+                'umbral_corte_m3_aplicado' => $breakdown['cutoff_threshold_m3'],
+                'tarifa_reconexion_aplicada' => $breakdown['reconnection_fee'],
                 'estado' => $coverageEnd->copy()->addDays(30)->isPast() ? 'vencida' : 'pendiente',
                 'id_socio' => $socio->id_socio,
                 'id_lectura' => $lectura->id_lectura,
@@ -325,6 +374,12 @@ class BillingAutomationService
         if ($invoiceRows !== []) {
             DB::table('facturas')->insert($invoiceRows);
         }
+
+        $this->logTiming('billing.syncSocio', $startedAt, [
+            'id_socio' => $idSocio,
+            'created' => $created,
+            'skipped' => $skipped,
+        ]);
 
         return compact('created', 'skipped');
     }
@@ -350,13 +405,14 @@ class BillingAutomationService
 
     private function globalIsCurrent(Carbon $cutoff): bool
     {
+        $startedAt = microtime(true);
         $billable = DB::table('socios as s')
             ->join('medidores as m', function ($join) {
                 $join->on('m.id_socio', '=', 's.id_socio')
                     ->where('m.estado', '=', 'activo');
             })
             ->join('tarifas as t', 't.id_tarifa', '=', 's.id_tarifa')
-            ->where('s.estado', '!=', 'inactivo')
+            ->where('s.estado', 'activo')
             ->select('s.id_socio');
 
         $latestInvoices = DB::table('facturas as f')
@@ -372,6 +428,11 @@ class BillingAutomationService
                     ->orWhereDate('lf.last_end', '<', $cutoff->toDateString());
             })
             ->exists();
+
+        $this->logTiming('billing.globalIsCurrent', $startedAt, [
+            'cutoff' => $cutoff->toDateString(),
+            'outdated_exists' => $outdatedExists,
+        ]);
 
         return !$outdatedExists;
     }
@@ -566,17 +627,23 @@ class BillingAutomationService
         Cache::forget('facturas.totales');
         Cache::forget('facturas.billing_candidates');
         Cache::forget('facturas.periodos');
-        Cache::add('facturas:index:version', 1, now()->addYears(2));
-        Cache::increment('facturas:index:version');
-        Cache::add('cobros.index.version', 1, now()->addYears(2));
-        Cache::increment('cobros.index.version');
-        Cache::add('reportes:index:version', 1, now()->addYears(2));
-        Cache::increment('reportes:index:version');
         Cache::forget('tecnico:billing-signals');
         Cache::forget('tecnico:corte:open-socios');
         Cache::forget('tecnico:reconexion:open-socios');
         Cache::forget('tecnico:reconexion:latest-cuts');
         Cache::forget('api.dashboard.tecnico');
-        OperationalCache::bump();
+        OperationalCache::bumpDomain('billing');
+    }
+
+    private function lockBillingAutomation(): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::select("SELECT pg_advisory_xact_lock(hashtext('billing-automation'))");
+            DB::select("SELECT pg_advisory_xact_lock(hashtext('invoice-number-sequence'))");
+
+            return;
+        }
+
+        DB::table('periodos_facturacion')->orderBy('id_periodo')->lockForUpdate()->value('id_periodo');
     }
 }

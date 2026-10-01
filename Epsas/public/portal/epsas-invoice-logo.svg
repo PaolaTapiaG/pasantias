@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 180" role="img" aria-labelledby="title desc">
+    <title id="title">EPSAS El Portillo</title>
+    <desc id="desc">Logo institucional para facturas y comprobantes.</desc>
+    <rect width="720" height="180" rx="28" fill="#ffffff"/>
+    <g transform="translate(36 26)">
+        <path d="M58 4c24 32 48 65 48 93 0 31-22 53-48 53S10 128 10 97C10 69 34 36 58 4z" fill="#0f62c6"/>
+        <path d="M34 111c13 16 35 23 59 11-8 18-24 30-43 30-18 0-34-10-43-25 8 1 18-3 27-16z" fill="#1fa75b"/>
+        <path d="M44 91c11 11 23 16 36 13-5 11-16 19-29 19-15 0-28-10-31-25 7 2 15 0 24-7z" fill="#e8f6ff"/>
+    </g>
+    <g transform="translate(172 42)">
+        <text x="0" y="46" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="800" fill="#0b4fb3">EPSAS</text>
+        <text x="0" y="104" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700" fill="#1f9d55">El Portillo</text>
+    </g>
+</svg>

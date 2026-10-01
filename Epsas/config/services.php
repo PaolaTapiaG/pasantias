@@ -22,6 +22,10 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+    ],
+
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),
@@ -40,6 +44,18 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    'bank_webhook' => [
+        'provider' => env('BANK_WEBHOOK_PROVIDER', 'bank'),
+        'secret' => env('BANK_WEBHOOK_SECRET'),
+        'tolerance_seconds' => (int) env('BANK_WEBHOOK_TOLERANCE_SECONDS', 300),
+        'employee_id' => env('BANK_WEBHOOK_EMPLOYEE_ID'),
+    ],
+
+    'luka' => [
+        'checkout_url' => env('LUKA_CHECKOUT_URL', 'https://checkout.lukabolivia.com'),
+        'merchant_id' => env('LUKA_MERCHANT_ID'),
     ],
 
 ];

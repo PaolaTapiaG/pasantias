@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Factura extends Model
 {
+    use CachesOperationalRouteBinding;
+
     protected $table = 'facturas';
     protected $primaryKey = 'id_factura';
 
@@ -22,8 +25,12 @@ class Factura extends Model
         'cargo_fijo',
         'recargo_mora',
         'descuentos',
+        'total',
         'precio_m3_aplicado',
         'cargo_fijo_aplicado',
+        'consumo_minimo_m3_aplicado',
+        'umbral_corte_m3_aplicado',
+        'tarifa_reconexion_aplicada',
         'estado',
         'id_socio',
         'id_lectura',
@@ -40,8 +47,12 @@ class Factura extends Model
         'cargo_fijo' => 'decimal:2',
         'recargo_mora' => 'decimal:2',
         'descuentos' => 'decimal:2',
+        'total' => 'decimal:2',
         'precio_m3_aplicado' => 'decimal:4',
         'cargo_fijo_aplicado' => 'decimal:2',
+        'consumo_minimo_m3_aplicado' => 'decimal:2',
+        'umbral_corte_m3_aplicado' => 'decimal:2',
+        'tarifa_reconexion_aplicada' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

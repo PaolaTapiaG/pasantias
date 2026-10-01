@@ -4,10 +4,43 @@ namespace App\Auth;
 
 use Illuminate\Auth\EloquentUserProvider;
 use Illuminate\Contracts\Auth\Authenticatable as UserContract;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class CachedEloquentUserProvider extends EloquentUserProvider
 {
+    public function retrieveByCredentials(array $credentials): ?UserContract
+    {
+        $credentials = array_filter(
+            $credentials,
+            fn ($key) => ! Str::contains($key, 'password'),
+            ARRAY_FILTER_USE_KEY
+        );
+
+        if ($credentials === [] || Arr::first($credentials) instanceof \Closure) {
+            return null;
+        }
+
+        return Cache::remember(
+            self::credentialCacheKey($credentials),
+            now()->addMinutes((int) config('auth.user_cache_minutes', 1440)),
+            function () use ($credentials) {
+                $query = $this->newModelQuery()->with('persona');
+
+                foreach ($credentials as $key => $value) {
+                    if ($value instanceof \Closure) {
+                        $value($query);
+                    } else {
+                        $query->where($key, $value);
+                    }
+                }
+
+                return $query->first();
+            }
+        );
+    }
+
     public function retrieveById($identifier): ?UserContract
     {
         if (empty($identifier)) {
@@ -32,7 +65,7 @@ class CachedEloquentUserProvider extends EloquentUserProvider
     {
         $user = $this->retrieveById($identifier);
 
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -50,6 +83,13 @@ class CachedEloquentUserProvider extends EloquentUserProvider
 
     private function cacheKey(mixed $identifier): string
     {
-        return 'auth:user:' . str_replace('\\', '.', $this->model) . ':' . $identifier;
+        return 'auth:user:'.str_replace('\\', '.', $this->model).':'.$identifier;
+    }
+
+    public static function credentialCacheKey(array $credentials): string
+    {
+        ksort($credentials);
+
+        return 'auth:credentials:'.sha1(json_encode($credentials));
     }
 }

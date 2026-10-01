@@ -29,8 +29,8 @@ class OrdenTecnica extends Model
     protected $casts = [
         'fecha_programada' => 'date',
         'fecha_ejecucion' => 'date',
-        'coord_x' => 'decimal:2',
-        'coord_y' => 'decimal:2',
+        'coord_x' => 'decimal:7',
+        'coord_y' => 'decimal:7',
     ];
 
     public function socio(): BelongsTo

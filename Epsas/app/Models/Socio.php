@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,12 +10,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Socio extends Model
 {
+    use CachesOperationalRouteBinding;
+
     protected $table = 'socios';
     protected $primaryKey = 'id_socio';
 
     protected $fillable = [
         'numero_socio',
         'direccion',
+        'latitud',
+        'longitud',
         'fecha_registro',
         'estado',
         'oculto',
@@ -28,6 +33,8 @@ class Socio extends Model
 
     protected $casts = [
         'fecha_registro' => 'date',
+        'latitud' => 'decimal:7',
+        'longitud' => 'decimal:7',
         'oculto' => 'boolean',
         'oculto_en' => 'datetime',
     ];

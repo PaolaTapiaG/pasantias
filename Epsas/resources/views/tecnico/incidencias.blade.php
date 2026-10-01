@@ -38,6 +38,19 @@
                         <option value="cerrada">Cerrada</option>
                     </select>
                 </div>
+                <div class="rounded-[1.75rem] border border-slate-200 p-3 dark:border-slate-800">
+                    <x-geo-map
+                        id="incidencia-map"
+                        :lat="(float) old('coord_x', -21.5355)"
+                        :lng="(float) old('coord_y', -64.7296)"
+                        :zoom="15"
+                        height="300px"
+                        :picker="true"
+                        lat-input="[name='coord_x']"
+                        lng-input="[name='coord_y']"
+                    />
+                    <p class="mt-3 text-xs font-semibold text-slate-500">Marca el lugar de la rotura, fuga o incidencia reportada.</p>
+                </div>
                 <textarea name="descripcion" class="theme-soft min-h-28 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none" placeholder="Describe el evento, alcance y evidencia disponible">{{ old('descripcion') }}</textarea>
                 <div class="grid gap-4 md:grid-cols-2">
                     <input name="gasto_concepto" value="{{ old('gasto_concepto') }}" placeholder="Concepto del gasto o trabajo requerido" class="theme-soft h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none">

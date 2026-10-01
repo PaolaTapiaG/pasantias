@@ -44,12 +44,6 @@
                         <a href="{{ $whatsappUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:w-auto">
                             Abrir WhatsApp
                         </a>
-                        <form method="POST" action="{{ route('secretaria.facturas.send-email', $factura) }}" class="sm:w-auto">
-                            @csrf
-                            <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 sm:w-auto">
-                                Enviar PDF por email
-                            </button>
-                        </form>
                         <a href="{{ $printUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto">
                             Imprimir
                         </a>

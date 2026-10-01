@@ -1,3 +1,8 @@
+@php
+    $showAdminNotifications = ! (bool) (auth()->user()?->must_change_password ?? false);
+@endphp
+
+@if ($showAdminNotifications)
 <div
     data-admin-notifications
     data-notifications-url="{{ route('api.admin.notifications', [], false) }}"
@@ -86,6 +91,7 @@
         </div>
     </section>
 </div>
+@endif
 
 @once
     @push('scripts')
@@ -122,7 +128,12 @@
                     </a>
                 `;
 
-                const render = (data) => {
+                let intervalId = null;
+                let detailLoadedAt = 0;
+
+                const withDetail = () => `${url}${url.includes('?') ? '&' : '?'}detail=1`;
+
+                const renderCounts = (data) => {
                     const counts = data.counts || {};
                     const qrPending = Number(counts.qr_pendientes || 0);
                     const readings = Number(counts.lecturas_hoy || 0);
@@ -134,33 +145,81 @@
 
                     badge.textContent = total > 99 ? '99+' : total;
                     badge.classList.toggle('is-hidden', total <= 0);
+                };
 
+                const renderLists = (data) => {
                     const qrItems = data.items?.qr || [];
                     const readingItems = data.items?.lecturas || [];
                     listQr.innerHTML = qrItems.length ? qrItems.map(item).join('') : empty('No hay pagos QR pendientes.');
                     listReadings.innerHTML = readingItems.length ? readingItems.map(item).join('') : empty('No hay lecturas cargadas hoy.');
                 };
 
-                const load = async () => {
-                    try {
-                        const response = await fetch(url, {
-                            headers: { Accept: 'application/json' },
-                            credentials: 'same-origin',
-                        });
+                const requestNotifications = async (detail = false) => {
+                    const response = await fetch(detail ? withDetail() : url, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin',
+                    });
 
-                        if (response.ok) {
-                            render(await response.json());
+                    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+                        return null;
+                    }
+
+                    return response.json();
+                };
+
+                const loadCounts = async () => {
+                    if (document.hidden) {
+                        return;
+                    }
+
+                    try {
+                        const data = await requestNotifications(false);
+
+                        if (data) {
+                            renderCounts(data);
+                        }
+                    } catch (error) {
+                        console.warn('No se pudieron cargar notificaciones admin.', error);
+                        stopPolling();
+                        window.setTimeout(startPolling, 120000);
+                    }
+                };
+
+                const loadDetails = async () => {
+                    try {
+                        const data = await requestNotifications(true);
+
+                        if (data) {
+                            renderCounts(data);
+                            renderLists(data);
+                            detailLoadedAt = Date.now();
                         }
                     } catch (error) {
                         console.warn('No se pudieron cargar notificaciones admin.', error);
                     }
                 };
 
+                const startPolling = () => {
+                    if (intervalId) {
+                        return;
+                    }
+
+                    loadCounts();
+                    intervalId = window.setInterval(loadCounts, 120000);
+                };
+
+                const stopPolling = () => {
+                    if (intervalId) {
+                        window.clearInterval(intervalId);
+                        intervalId = null;
+                    }
+                };
+
                 toggle.addEventListener('click', () => {
                     const isHidden = panel.classList.toggle('is-hidden');
                     toggle.setAttribute('aria-expanded', String(!isHidden));
-                    if (!isHidden) {
-                        load();
+                    if (!isHidden && Date.now() - detailLoadedAt > 60000) {
+                        loadDetails();
                     }
                 });
 
@@ -171,8 +230,24 @@
                     }
                 });
 
-                load();
-                window.setInterval(load, 45000);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        stopPolling();
+                    } else {
+                        startPolling();
+                    }
+                });
+
+                const scheduleInitialPolling = () => {
+                    if ('requestIdleCallback' in window) {
+                        window.requestIdleCallback(startPolling, { timeout: 2500 });
+                        return;
+                    }
+
+                    window.setTimeout(startPolling, 1500);
+                };
+
+                scheduleInitialPolling();
             })();
         </script>
     @endpush

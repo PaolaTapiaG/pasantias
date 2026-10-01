@@ -16,9 +16,39 @@ DROP FUNCTION IF EXISTS registrar_historial_cobro();
 DROP FUNCTION IF EXISTS marcar_facturas_vencidas();
 DROP FUNCTION IF EXISTS auditoria_trigger();
 
+CREATE OR REPLACE FUNCTION epsas_auth_uid()
+RETURNS UUID
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_uid UUID;
+BEGIN
+  BEGIN
+    EXECUTE 'SELECT auth.uid()' INTO v_uid;
+  EXCEPTION
+    WHEN invalid_schema_name OR undefined_function THEN
+      v_uid := NULL;
+  END;
+
+  IF v_uid IS NULL THEN
+    BEGIN
+      v_uid := NULLIF(current_setting('app.supabase_uid', TRUE), '')::UUID;
+    EXCEPTION
+      WHEN invalid_text_representation THEN
+        v_uid := NULL;
+    END;
+  END IF;
+
+  RETURN v_uid;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION guardar_tarifa_factura()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   SELECT t.precio_m3_base, t.cargo_fijo
@@ -39,6 +69,7 @@ CREATE TRIGGER trg_tarifa_factura
 CREATE OR REPLACE FUNCTION validar_pago_factura()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   v_total_pagado NUMERIC;
@@ -181,6 +212,7 @@ CREATE TRIGGER trg_historial_cobro
 CREATE OR REPLACE FUNCTION marcar_facturas_vencidas()
 RETURNS INTEGER
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   v_total INTEGER;
@@ -223,7 +255,7 @@ BEGIN
   SELECT e.id_empleado
     INTO v_actor_empleado_id
   FROM empleados e
-  WHERE e.user_id = auth.uid()
+  WHERE e.user_id = epsas_auth_uid()
   LIMIT 1;
 
   IF TG_TABLE_NAME = 'socios' THEN
@@ -250,21 +282,21 @@ BEGIN
         tabla, accion, usuario, id_empleado, id_socio, id_factura, id_cobro, id_tarifa, datos_despues
       )
       VALUES (
-        TG_TABLE_NAME, TG_OP, auth.uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(NEW)
+        TG_TABLE_NAME, TG_OP, epsas_auth_uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(NEW)
       );
     WHEN 'UPDATE' THEN
       INSERT INTO auditoria(
         tabla, accion, usuario, id_empleado, id_socio, id_factura, id_cobro, id_tarifa, datos_antes, datos_despues
       )
       VALUES (
-        TG_TABLE_NAME, TG_OP, auth.uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(OLD), to_jsonb(NEW)
+        TG_TABLE_NAME, TG_OP, epsas_auth_uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(OLD), to_jsonb(NEW)
       );
     WHEN 'DELETE' THEN
       INSERT INTO auditoria(
         tabla, accion, usuario, id_empleado, id_socio, id_factura, id_cobro, id_tarifa, datos_antes
       )
       VALUES (
-        TG_TABLE_NAME, TG_OP, auth.uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(OLD)
+        TG_TABLE_NAME, TG_OP, epsas_auth_uid()::text, v_actor_empleado_id, v_socio_id, v_factura_id, v_cobro_id, v_tarifa_id, to_jsonb(OLD)
       );
       RETURN OLD;
   END CASE;

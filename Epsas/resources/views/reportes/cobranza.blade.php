@@ -1,8 +1,8 @@
 <section class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
     <div class="flex items-center justify-between gap-3">
         <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Cobranza</p>
-            <h2 class="mt-1 text-lg font-semibold text-slate-900">Pagos registrados</h2>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Ingresos</p>
+            <h2 class="mt-1 text-lg font-semibold text-slate-900">Ingresos registrados</h2>
         </div>
         <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $cobranza->count() }}</span>
     </div>
@@ -19,7 +19,7 @@
                 </div>
             </div>
         @empty
-            <p class="text-sm text-slate-500">No hay cobros en el rango seleccionado.</p>
+            <p class="text-sm text-slate-500">No hay ingresos en el rango seleccionado.</p>
         @endforelse
     </div>
 </section>

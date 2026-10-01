@@ -14,8 +14,8 @@
                     <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Gateway SMS</h1>
                     <p class="mt-2 text-sm text-slate-500">Envio de prueba, monitoreo rapido y bandeja local de mensajes procesados.</p>
                 </div>
-                <a href="{{ route('admin.configuracion.index') }}" class="inline-flex items-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-                    Volver a configuracion
+                <a href="{{ route('admin.configuracion.empresa') }}" class="inline-flex items-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    Volver a empresa y branding
                 </a>
             </div>
         </header>

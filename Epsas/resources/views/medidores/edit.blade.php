@@ -5,6 +5,16 @@
 @section('content')
 @php
     $isAdmin = auth()->user()?->cachedRoleNames()?->contains('administrador');
+    $mapLat = is_numeric(old('latitud', $medidor->latitud)) ? (float) old('latitud', $medidor->latitud) : -21.5355;
+    $mapLng = is_numeric(old('longitud', $medidor->longitud)) ? (float) old('longitud', $medidor->longitud) : -64.7296;
+    $mapMarkers = is_numeric(old('latitud', $medidor->latitud)) && is_numeric(old('longitud', $medidor->longitud)) ? [[
+        'type' => 'medidor',
+        'lat' => $mapLat,
+        'lng' => $mapLng,
+        'title' => 'Medidor '.$medidor->numero_serie,
+        'description' => $medidor->socio?->persona?->nombre_completo,
+        'category' => 'Medidor',
+    ]] : [];
 @endphp
 <div class="page-background min-h-screen">
     @if ($isAdmin)
@@ -61,6 +71,22 @@
                         <div><label class="mb-2 block text-sm font-medium">Modelo</label><input name="modelo" value="{{ old('modelo', $medidor->modelo) }}" class="theme-soft h-11 w-full rounded-xl border px-4 text-sm outline-none"></div>
                         <div><label class="mb-2 block text-sm font-medium">Fecha de instalacion</label><input type="date" name="fecha_instalacion" value="{{ old('fecha_instalacion', optional($medidor->fecha_instalacion)->format('Y-m-d')) }}" class="theme-soft h-11 w-full rounded-xl border px-4 text-sm outline-none"></div>
                         <div><label class="mb-2 block text-sm font-medium">Tecnico instalador</label><select name="id_empleado_instalador" class="theme-soft h-11 w-full rounded-xl border px-4 text-sm outline-none"><option value="">Sin asignar</option>@foreach ($tecnicos as $tecnico)<option value="{{ $tecnico->id_empleado }}" @selected((string) old('id_empleado_instalador', $medidor->id_empleado_instalador) === (string) $tecnico->id_empleado)>{{ $tecnico->persona?->nombre_completo ?? ('Tecnico #' . $tecnico->id_empleado) }}</option>@endforeach</select></div>
+                        <div><label for="medidor-latitud" class="mb-2 block text-sm font-medium">Latitud</label><input id="medidor-latitud" name="latitud" value="{{ old('latitud', $medidor->latitud) }}" inputmode="decimal" class="theme-soft h-11 w-full rounded-xl border px-4 text-sm outline-none"></div>
+                        <div><label for="medidor-longitud" class="mb-2 block text-sm font-medium">Longitud</label><input id="medidor-longitud" name="longitud" value="{{ old('longitud', $medidor->longitud) }}" inputmode="decimal" class="theme-soft h-11 w-full rounded-xl border px-4 text-sm outline-none"></div>
+                    </div>
+                    <div class="rounded-[1.75rem] border border-slate-200 p-3">
+                        <x-geo-map
+                            id="medidor-map"
+                            :lat="$mapLat"
+                            :lng="$mapLng"
+                            :zoom="16"
+                            height="320px"
+                            :picker="true"
+                            lat-input="#medidor-latitud"
+                            lng-input="#medidor-longitud"
+                            :markers="$mapMarkers"
+                        />
+                        <p class="mt-3 text-xs font-semibold text-slate-500">Ajusta el marcador si el medidor cambio de ubicacion.</p>
                     </div>
                     <input type="hidden" name="id_socio" value="{{ $medidor->id_socio }}">
                     <button type="submit" class="inline-flex h-12 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700">Actualizar medidor</button>

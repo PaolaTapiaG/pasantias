@@ -4,10 +4,14 @@ namespace App\Providers;
 
 use App\Auth\CachedEloquentUserProvider;
 use App\Models\SystemSetting;
+use App\Support\OperationalCache;
+use App\Support\UserSessionSecurity;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rules\Password;
 use Exception;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('production.enforce_https')) {
+            URL::forceScheme('https');
+        }
+
+        Password::defaults(fn () => UserSessionSecurity::passwordRule());
+
         Auth::provider('cached_eloquent', function ($app, array $config) {
             return new CachedEloquentUserProvider($app['hash'], $config['model']);
         });
@@ -33,23 +43,29 @@ class AppServiceProvider extends ServiceProvider
             static $sharedCompanySettings;
             static $sharedAuthUserResolved = false;
             static $sharedAuthUser;
+            $defaultCompanySettings = [
+                'company_name' => 'EPSAS',
+                'company_alias' => 'Panel administrativo',
+                'company_logo' => null,
+            ];
+            $viewName = (string) $view->getName();
+            $usesExplicitPageSettings = str_starts_with($viewName, 'auth.')
+                || str_starts_with($viewName, 'errors.')
+                || str_starts_with($viewName, 'laravel-exceptions')
+                || request()->routeIs('login', 'password.*');
 
-            // Get company settings with fallback defaults if database is unavailable
-            $sharedCompanySettings ??= Cache::remember('shared_company_settings', now()->addDays(7), function () {
+            if ($usesExplicitPageSettings) {
+                $view->with('sharedCompanySettings', $defaultCompanySettings);
+                $view->with('sharedAuthUser', null);
+
+                return;
+            }
+
+            $sharedCompanySettings ??= OperationalCache::rememberDomain('settings', 'shared.company-settings', function () use ($defaultCompanySettings) {
                 try {
-                    return SystemSetting::getValue('general', [
-                        'company_name' => 'EPSAS',
-                        'company_alias' => 'Panel administrativo',
-                        'company_logo' => null,
-                    ]);
+                    return SystemSetting::getValue('general', $defaultCompanySettings);
                 } catch (Exception $e) {
-                    // If database connection fails, return default values
-                    // This prevents cascading failures when DB is down
-                    return [
-                        'company_name' => 'EPSAS',
-                        'company_alias' => 'Panel administrativo',
-                        'company_logo' => null,
-                    ];
+                    return $defaultCompanySettings;
                 }
             });
 

@@ -25,10 +25,9 @@ class TarifaController extends Controller
 
     private function tariffPaginator(Request $request, ?string $path = null)
     {
-        Cache::add('tarifas:index:version', 1, now()->addYears(2));
-        $cacheKey = 'tarifas:index:v' . Cache::get('tarifas:index:version', 1) . ':' . md5(json_encode($request->query()));
+        $cacheKey = 'tarifas.index.'.md5(json_encode($request->query()));
 
-        return Cache::remember($cacheKey, now()->addDays(7), fn () => $this->tariffIndexQuery($request)
+        return OperationalCache::rememberDomain('billing', $cacheKey, fn () => $this->tariffIndexQuery($request)
             ->simplePaginate(12)
             ->withPath($path ?? url('/admin/tarifas'))
             ->appends($request->query())
@@ -121,8 +120,9 @@ class TarifaController extends Controller
     {
         Cache::add('tarifas:index:version', 1, now()->addYears(2));
         Cache::increment('tarifas:index:version');
-        Cache::forget('facturas.billing_candidates');
+        OperationalCache::bumpDomain('billing');
         Cache::forget('tecnico:billing-signals');
-        OperationalCache::bump();
+        Cache::forget('socios.form.tarifas');
+        OperationalCache::forget('billing:signals');
     }
 }

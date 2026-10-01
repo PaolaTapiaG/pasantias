@@ -1,0 +1,15 @@
+[Unit]
+Description=EPSAS Laravel queue worker
+After=network.target redis-server.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+WorkingDirectory=/var/www/epsas/current
+ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=120 --max-time=3600
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

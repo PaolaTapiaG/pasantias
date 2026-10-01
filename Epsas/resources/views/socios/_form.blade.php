@@ -1,7 +1,34 @@
 @php
+    $errors = $errors ?? new \Illuminate\Support\ViewErrorBag;
     $editing = isset($socio);
     $persona = $editing ? $socio->persona : null;
     $medidor = $editing ? $socio->medidorActivo : null;
+    $defaultLat = -21.5355;
+    $defaultLng = -64.7296;
+    $socioLat = old('latitud', $editing ? $socio->latitud : null);
+    $socioLng = old('longitud', $editing ? $socio->longitud : null);
+    $medidorLat = old('medidor_latitud', $medidor?->latitud ?? $socioLat);
+    $medidorLng = old('medidor_longitud', $medidor?->longitud ?? $socioLng);
+    $socioMapLat = is_numeric($socioLat) ? (float) $socioLat : $defaultLat;
+    $socioMapLng = is_numeric($socioLng) ? (float) $socioLng : $defaultLng;
+    $medidorMapLat = is_numeric($medidorLat) ? (float) $medidorLat : $socioMapLat;
+    $medidorMapLng = is_numeric($medidorLng) ? (float) $medidorLng : $socioMapLng;
+    $socioMarkers = is_numeric($socioLat) && is_numeric($socioLng) ? [[
+        'type' => 'socio',
+        'lat' => (float) $socioLat,
+        'lng' => (float) $socioLng,
+        'title' => 'Ubicacion del socio',
+        'description' => old('direccion', $socio->direccion ?? 'Direccion del socio'),
+        'category' => 'Socio',
+    ]] : [];
+    $medidorMarkers = is_numeric($medidorLat) && is_numeric($medidorLng) ? [[
+        'type' => 'medidor',
+        'lat' => (float) $medidorLat,
+        'lng' => (float) $medidorLng,
+        'title' => 'Ubicacion del medidor',
+        'description' => old('numero_serie', $medidor?->numero_serie ?? ($nextNumeroMedidor ?? 'Medidor')),
+        'category' => 'Medidor',
+    ]] : [];
 @endphp
 
 <div class="grid gap-6 lg:grid-cols-2">
@@ -39,9 +66,45 @@
                 @error('email') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
             </div>
             <div class="sm:col-span-2">
+                <label for="foto" class="mb-2 block text-sm font-medium text-slate-700">Foto para carnet</label>
+                <input id="foto" name="foto" type="file" accept="image/*" class="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
+                @error('foto') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+                @if ($persona?->foto_url)
+                    <img src="{{ $persona->foto_url }}" alt="Foto actual del socio" class="mt-3 h-24 w-24 rounded-2xl object-cover ring-1 ring-slate-200">
+                @endif
+            </div>
+            <div class="sm:col-span-2">
                 <label for="direccion" class="mb-2 block text-sm font-medium text-slate-700">Direccion</label>
                 <input id="direccion" name="direccion" type="text" value="{{ old('direccion', $socio->direccion ?? null) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100">
                 @error('direccion') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+            </div>
+            <div class="sm:col-span-2 rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="socio-latitud" class="mb-2 block text-sm font-medium text-slate-700">Latitud del socio</label>
+                        <input id="socio-latitud" name="latitud" value="{{ $socioLat }}" inputmode="decimal" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        @error('latitud') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="socio-longitud" class="mb-2 block text-sm font-medium text-slate-700">Longitud del socio</label>
+                        <input id="socio-longitud" name="longitud" value="{{ $socioLng }}" inputmode="decimal" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        @error('longitud') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <x-geo-map
+                        id="socio-location-map"
+                        :lat="$socioMapLat"
+                        :lng="$socioMapLng"
+                        :zoom="15"
+                        height="280px"
+                        :picker="true"
+                        lat-input="#socio-latitud"
+                        lng-input="#socio-longitud"
+                        :markers="$socioMarkers"
+                    />
+                </div>
+                <p class="mt-3 text-xs font-semibold text-slate-500">Haz clic o arrastra el marcador para guardar la ubicacion exacta del socio.</p>
             </div>
         </div>
     </section>
@@ -87,7 +150,10 @@
                 <div class="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                         <label for="numero_serie" class="mb-2 block text-sm font-medium text-slate-700">Numero de medidor</label>
-                        <input id="numero_serie" name="numero_serie" type="text" value="{{ old('numero_serie', $medidor?->numero_serie) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" required>
+                        <input id="numero_serie" name="numero_serie" type="text" value="{{ old('numero_serie', $medidor?->numero_serie ?? ($nextNumeroMedidor ?? null)) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" required>
+                        @unless($editing)
+                            <p class="mt-2 text-xs text-slate-500">Numero sugerido automaticamente. Puedes cambiarlo solo si corresponde.</p>
+                        @endunless
                         @error('numero_serie') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
@@ -95,8 +161,59 @@
                         <input id="fecha_instalacion" name="fecha_instalacion" type="date" value="{{ old('fecha_instalacion', optional($medidor?->fecha_instalacion)->format('Y-m-d')) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
                         @error('fecha_instalacion') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label for="medidor-latitud" class="mb-2 block text-sm font-medium text-slate-700">Latitud del medidor</label>
+                        <input id="medidor-latitud" name="medidor_latitud" value="{{ $medidorLat }}" inputmode="decimal" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        @error('medidor_latitud') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="medidor-longitud" class="mb-2 block text-sm font-medium text-slate-700">Longitud del medidor</label>
+                        <input id="medidor-longitud" name="medidor_longitud" value="{{ $medidorLng }}" inputmode="decimal" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                        @error('medidor_longitud') <p class="mt-2 text-xs text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <x-geo-map
+                            id="medidor-location-map"
+                            :lat="$medidorMapLat"
+                            :lng="$medidorMapLng"
+                            :zoom="16"
+                            height="260px"
+                            :picker="true"
+                            lat-input="#medidor-latitud"
+                            lng-input="#medidor-longitud"
+                            :markers="$medidorMarkers"
+                        />
+                        <button type="button" data-copy-socio-location class="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 sm:w-auto">
+                            Usar ubicacion del socio
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 </div>
+
+@push('scripts')
+<script>
+    (() => {
+        const socioLat = document.getElementById('socio-latitud');
+        const socioLng = document.getElementById('socio-longitud');
+        const medidorLat = document.getElementById('medidor-latitud');
+        const medidorLng = document.getElementById('medidor-longitud');
+        const medidorMap = document.getElementById('medidor-location-map');
+
+        document.querySelector('[data-copy-socio-location]')?.addEventListener('click', () => {
+            if (!socioLat?.value || !socioLng?.value || !medidorLat || !medidorLng) return;
+
+            medidorLat.value = socioLat.value;
+            medidorLng.value = socioLng.value;
+            medidorMap?.dispatchEvent(new CustomEvent('epsas:geo:set', {
+                detail: {
+                    lat: socioLat.value,
+                    lng: socioLng.value,
+                },
+            }));
+        });
+    })();
+</script>
+@endpush

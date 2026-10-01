@@ -1,0 +1,6 @@
+/.vscode/
+/Epsas/postgres
+/Epsas/storage/psysh/
+/Epsas/storage/responsive-audit*.json
+/Epsas/storage/route-list*.json
+/Epsas/storage/staging-php/

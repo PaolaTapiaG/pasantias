@@ -5,6 +5,7 @@
 @section('content')
 @php
     $isAdmin = auth()->user()?->cachedRoleNames()?->contains('administrador');
+    $registerConsumptionRoute = $isAdmin ? route('tecnico.lecturas.create') : route('tecnico.consumo.index');
 @endphp
 <div class="page-background min-h-screen">
     @if ($isAdmin)
@@ -33,7 +34,7 @@
                         <p class="mt-1 text-sm text-slate-500">Vista general con filtros, exportacion y accesos de operacion.</p>
                     </div>
                     <div class="grid w-full gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end">
-                        <a href="{{ route('tecnico.consumo.index') }}" class="inline-flex w-full items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-100 sm:w-auto">Registrar consumo</a>
+                        <a href="{{ $registerConsumptionRoute }}" class="inline-flex w-full items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-100 sm:w-auto">Registrar consumo</a>
                         <a href="{{ route('tecnico.medidores.export', ['format' => 'excel'] + request()->query()) }}" class="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 sm:w-auto">Exportar Excel</a>
                         <a href="{{ route('tecnico.medidores.export', ['format' => 'pdf'] + request()->query()) }}" class="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 sm:w-auto">Exportar PDF</a>
                         @if ($isAdmin)
@@ -65,7 +66,41 @@
             </section>
 
             <section class="mt-6 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                <div class="overflow-x-auto">
+                <div class="grid gap-3 p-3 md:hidden">
+                    @forelse ($medidores as $medidor)
+                        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <h2 class="wrap-break-word text-sm font-semibold text-slate-900">{{ $medidor->numero_serie }}</h2>
+                                    <p class="mt-1 wrap-break-word text-sm text-slate-600">{{ $medidor->socio?->persona?->nombre_completo ?? 'Sin socio asignado' }}</p>
+                                </div>
+                                <span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ $medidor->estado === 'activo' ? 'bg-emerald-100 text-emerald-700' : ($medidor->estado === 'danado' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700') }}">
+                                    {{ ucfirst($medidor->estado) }}
+                                </span>
+                            </div>
+
+                            <div class="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm">
+                                <p><span class="font-medium text-slate-500">Socio:</span> {{ $medidor->socio?->codigo_display ?? 'Sin codigo' }}</p>
+                                <p><span class="font-medium text-slate-500">Sector:</span> {{ $medidor->socio?->sector?->nombre ?: 'Sin sector' }}</p>
+                                <p><span class="font-medium text-slate-500">Tecnico:</span> {{ $medidor->empleadoInstalador?->persona?->nombre_completo ?? 'No asignado' }}</p>
+                                <p><span class="font-medium text-slate-500">Instalacion:</span> {{ optional($medidor->fecha_instalacion)->format('d/m/Y') ?: 'Sin fecha' }}</p>
+                                @if ($medidor->marca || $medidor->modelo)
+                                    <p><span class="font-medium text-slate-500">Equipo:</span> {{ trim(($medidor->marca ?: '').' '.($medidor->modelo ?: '')) }}</p>
+                                @endif
+                            </div>
+
+                            @if ($isAdmin)
+                                <a href="{{ route('tecnico.medidores.edit', $medidor->id_medidor) }}" class="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Editar medidor</a>
+                            @else
+                                <p class="mt-4 rounded-xl bg-slate-100 px-3 py-2 text-center text-sm font-medium text-slate-500">Solo lectura</p>
+                            @endif
+                        </article>
+                    @empty
+                        <p class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">No se encontraron medidores con los filtros actuales.</p>
+                    @endforelse
+                </div>
+
+                <div class="hidden overflow-x-auto md:block">
                     <table class="min-w-full divide-y divide-slate-200">
                         <thead class="bg-slate-50/80">
                             <tr class="text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">

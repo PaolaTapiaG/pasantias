@@ -78,6 +78,30 @@
             </div>
         </div>
 
+        <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="mb-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Datos laborales</p>
+                <p class="mt-1 text-sm text-slate-500">Estos montos se usan para registrar egresos de salario, bonos y aguinaldo segun el rol del empleado.</p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Salario base mensual</label>
+                    <input name="salario_base" type="number" min="0" step="0.01" value="{{ old('salario_base', $empleado?->salario_base ?? 0) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    @error('salario_base') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Bono mensual</label>
+                    <input name="bono_mensual" type="number" min="0" step="0.01" value="{{ old('bono_mensual', $empleado?->bono_mensual ?? 0) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    @error('bono_mensual') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Aguinaldo anual</label>
+                    <input name="aguinaldo_anual" type="number" min="0" step="0.01" value="{{ old('aguinaldo_anual', $empleado?->aguinaldo_anual ?? 0) }}" class="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    @error('aguinaldo_anual') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+            </div>
+        </section>
+
         <div class="flex justify-end">
             <button class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
                 {{ $submitLabel }}

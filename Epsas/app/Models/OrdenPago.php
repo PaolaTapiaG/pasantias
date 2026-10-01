@@ -67,6 +67,8 @@ class OrdenPago extends Model
 
     public function getComprobanteUrlAttribute(): ?string
     {
-        return $this->comprobante_path ? asset($this->comprobante_path) : null;
+        return $this->comprobante_path
+            ? route('secretaria.ordenes-pago.proof', $this)
+            : null;
     }
 }

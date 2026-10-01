@@ -3,18 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Persona;
+use App\Support\PrivateMedia;
+use App\Support\UserSessionSecurity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\View\View;
 
 class AdminProfileController extends Controller
 {
+    public function edit(): View
+    {
+        return view('perfil.admin', [
+            'adminProfile' => Auth::user()?->loadMissing('persona'),
+        ]);
+    }
+
     public function update(Request $request): RedirectResponse
     {
         $user = Auth::user()->loadMissing('persona');
@@ -25,27 +35,30 @@ class AdminProfileController extends Controller
             $emailRules[] = Rule::unique('users', 'email')->ignore($user->id);
         }
 
+        $passwordRequired = (bool) $user->must_change_password;
         $data = $request->validate([
             'admin_name' => ['required', 'string', 'max:120'],
             'admin_email' => $emailRules,
             'admin_phone' => ['nullable', 'string', 'max:30'],
             'admin_description' => ['nullable', 'string', 'max:500'],
             'admin_photo' => ['nullable', 'image', 'max:2048'],
-            'current_password' => ['nullable', 'string'],
-            'new_password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ]);
+            'current_password' => [$passwordRequired ? 'required' : 'nullable', 'string'],
+            'new_password' => [$passwordRequired ? 'required' : 'nullable', 'confirmed', Password::defaults()],
+        ], $this->passwordValidationMessages());
         $data['admin_email'] = $email;
 
         $userUpdates = [
             'name' => $data['admin_name'],
             'email' => $email,
         ];
-        if (!empty($data['new_password'])) {
+        $passwordChanged = !empty($data['new_password']);
+        if ($passwordChanged) {
             if (empty($data['current_password']) || !Hash::check($data['current_password'], $user->password)) {
                 return back()->withErrors(['current_password' => 'La contrasena actual no es valida.']);
             }
 
             $userUpdates['password'] = $data['new_password'];
+            $userUpdates['must_change_password'] = false;
         }
 
         $persona = $this->resolvePersonaForUser($user, $data);
@@ -55,13 +68,7 @@ class AdminProfileController extends Controller
             [$nombres, $apellidos] = $this->splitFullName($data['admin_name']);
 
             if ($request->hasFile('admin_photo') && $request->file('admin_photo')->isValid()) {
-                if ($photoPath && Str::startsWith($photoPath, 'storage/')) {
-                    Storage::disk('public')->delete(Str::after($photoPath, 'storage/'));
-                }
-
-                $filename = 'perfil_admin_' . now()->format('YmdHis') . '_' . Str::random(8) . '.' . strtolower($request->file('admin_photo')->extension() ?: 'jpg');
-                $stored = $request->file('admin_photo')->storeAs('perfiles', $filename, 'public');
-                $photoPath = 'storage/' . $stored;
+                $photoPath = PrivateMedia::storeImage($request->file('admin_photo'), 'perfiles', 'perfil_admin', $photoPath);
             }
 
             $persona->update([
@@ -86,11 +93,20 @@ class AdminProfileController extends Controller
         }
 
         $user->forceFill($userUpdates)->save();
+        if ($passwordChanged) {
+            UserSessionSecurity::invalidateOtherSessions($user, $request, $data['new_password']);
+        }
+
         $user->flushAuthCache();
+        Cache::forget('auth:current-employee:'.$user->getKey());
         Cache::put($this->authUserCacheKey($user), $user, now()->addMinutes((int) config('auth.user_cache_minutes', 1440)));
 
+        $route = $passwordRequired && ! ($user->must_change_password)
+            ? 'dashboard'
+            : 'admin.perfil.index';
+
         return redirect()
-            ->route('admin.configuracion.index')
+            ->route($route)
             ->with('success', 'Perfil de administrador actualizado correctamente.');
     }
 
@@ -147,5 +163,14 @@ class AdminProfileController extends Controller
     private function authUserCacheKey($user): string
     {
         return 'auth:user:' . str_replace('\\', '.', $user::class) . ':' . $user->getAuthIdentifier();
+    }
+
+    private function passwordValidationMessages(): array
+    {
+        return [
+            'current_password.required' => 'Debes escribir tu contrasena actual para cambiar la contrasena temporal.',
+            'new_password.required' => 'Debes escribir una nueva contrasena para desbloquear el acceso.',
+            'new_password.confirmed' => 'La nueva contrasena y la confirmacion deben ser iguales.',
+        ];
     }
 }

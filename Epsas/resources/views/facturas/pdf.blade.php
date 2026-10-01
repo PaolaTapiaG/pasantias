@@ -1,191 +1,46 @@
-@php
-    $inicioCobro = $factura->fecha_inicio_cobro ?? $factura->periodo?->fecha_inicio;
-    $finCobro = $factura->fecha_fin_cobro ?? $factura->periodo?->fecha_fin;
-@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $factura->numero_factura }}</title>
+    <title>{{ $factura->numero_factura }} - {{ $company['company_name'] ?? 'EPSAS' }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #123057; font-size: 12px; margin: 30px; }
-        .header { margin-bottom: 28px; }
-        .brand-line { height: 5px; width: 240px; background: #2f69b7; margin-bottom: 10px; }
-        .title { font-size: 38px; letter-spacing: 0.1em; color: #2f69b7; text-transform: lowercase; margin: 0; }
-        .muted { color: #5c78a2; font-size: 11px; }
-        .top-table, .summary-table, .reading-table, .payments-table { width: 100%; border-collapse: collapse; }
-        .top-table td { vertical-align: top; padding: 4px 0; }
-        .summary-table th, .summary-table td, .reading-table th, .reading-table td, .payments-table th, .payments-table td {
-            border: 1px solid #7aa2d8;
-            padding: 9px 10px;
-        }
-        .summary-table th, .reading-table th, .payments-table th {
-            color: #2f69b7;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            background: #f4f8ff;
-        }
-        .text-right { text-align: right; }
-        .badge { display: inline-block; border: 1px solid #7aa2d8; color: #2f69b7; padding: 4px 10px; border-radius: 999px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; }
-        .section-title { color: #2f69b7; font-size: 22px; margin: 0 0 12px; }
-        .totals { width: 280px; margin-left: auto; margin-top: 20px; }
-        .totals td { padding: 6px 0; }
-        .total-box { margin-top: 16px; border: 2px solid #2f69b7; padding: 10px 14px; font-size: 18px; font-weight: bold; color: #2f69b7; }
-        .logo-box { width: 82px; height: 82px; border-radius: 50%; border: 1px solid #a9bbd6; text-align: center; line-height: 82px; overflow: hidden; margin-left: auto; }
-        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
-        .spacer { height: 16px; }
+        @page { margin: 12mm 13mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #20252b; font-family: DejaVu Sans, sans-serif; font-size: 9px; }
+        .invoice-sheet { border-top: 0; }
+        .institution-header { display: table; width: 100%; border-bottom: 1px solid #8d9b92; padding-bottom: 8px; }
+        .institution-header > div { display: table-cell; vertical-align: middle; }
+        .institution-mark { width: 82px; text-align: center; }
+        .institution-mark img { display: block; max-width: 75px; max-height: 52px; margin: auto; }
+        .institution-mark strong { color: #1f5d42; font-size: 14px; }
+        .institution-copy { padding: 0 8px; color: #4d555c; line-height: 1.45; }
+        .institution-title { color: #1f5d42; font-size: 15px; font-weight: 700; text-transform: uppercase; }
+        .institution-subtitle { color: #20252b; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+        .document-meta { width: 165px; border-left: 1px solid #cbd5d1; padding-left: 8px; line-height: 1.55; }
+        .document-label { color: #1f5d42; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .identity-grid { display: table; width: 100%; margin: 9px 0; border: 1px solid #9aa9a1; }
+        .identity-grid > div { display: table-cell; width: 17%; padding: 4px 5px; border-right: 1px solid #d3dbd6; vertical-align: top; }
+        .identity-grid > div:last-child { border-right: 0; }
+        .identity-grid .identity-wide { width: 25%; }
+        .identity-grid span { display: block; color: #637269; font-size: 6.5px; font-weight: 700; text-transform: uppercase; }
+        .identity-grid b { display: block; margin-top: 2px; font-size: 8px; }
+        .boleta-table { width: 100%; border-collapse: collapse; }
+        .boleta-table th { background: #e5eee9; color: #1f5d42; font-size: 7px; text-transform: uppercase; }
+        .boleta-table th, .boleta-table td { border: 1px solid #8d9b92; padding: 5px 6px; }
+        .reading-table td { height: 37px; text-align: center; }
+        .observation { border: 1px solid #8d9b92; border-top: 0; min-height: 22px; padding: 5px 6px; }
+        .charges-section { margin-top: 10px; }
+        .amount { text-align: right; white-space: nowrap; }
+        .current-total, .debt-total { display: table; width: 205px; margin: 5px 0 0 auto; border: 1.5px solid #1f5d42; padding: 5px 7px; color: #1f5d42; font-size: 9px; }
+        .current-total span, .current-total b, .debt-total span, .debt-total b { display: table-cell; }
+        .current-total b, .debt-total b { text-align: right; }
+        .debt-section { margin-top: 11px; }
+        .debt-section h2 { margin: 0 0 4px; color: #1f5d42; font-size: 10px; text-transform: uppercase; }
+        .empty-debt { text-align: center; color: #637269; }
+        .invoice-footer { margin-top: 11px; border-top: 1px solid #9aa9a1; padding-top: 6px; color: #637269; font-size: 7px; line-height: 1.45; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <table class="top-table">
-            <tr>
-                <td style="width: 65%;">
-                    <div class="brand-line"></div>
-                    <h1 class="title">recibo</h1>
-                    <p class="muted">{{ $company['company_name'] ?? 'EPSAS' }} | Recibo electronico emitido el {{ optional($factura->fecha_emision)->format('d/m/Y') }}</p>
-                </td>
-                <td style="width: 35%;">
-                    <div class="logo-box">
-                        @if (!empty($companyLogoDataUri))
-                            <img src="{{ $companyLogoDataUri }}" alt="Logo">
-                        @else
-                            LOGO
-                        @endif
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <table class="top-table">
-        <tr>
-            <td style="width: 52%; padding-right: 16px;">
-                <p class="section-title">De</p>
-                <div>{{ $company['company_name'] ?? 'EPSAS' }}</div>
-                <div>{{ $company['address'] ?? 'Direccion pendiente' }}</div>
-                <div>{{ $company['company_phone'] ?: 'Telefono pendiente' }}</div>
-                <div>{{ $company['company_email'] ?: 'Correo pendiente' }}</div>
-            </td>
-            <td style="width: 48%;">
-                <table style="width: 100%;">
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">N° de recibo</td><td class="text-right">{{ $factura->numero_factura }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Fecha</td><td class="text-right">{{ optional($factura->fecha_emision)->format('d/m/Y') }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Codigo usuario</td><td class="text-right">{{ $billingBreakdown['codigo_usuario'] }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Periodo</td><td class="text-right">{{ $factura->periodo?->nombre }}</td></tr>
-                    <tr><td style="color:#2f69b7; text-transform:uppercase; letter-spacing:0.08em;">Cobro real</td><td class="text-right">{{ optional($inicioCobro)->format('d/m/Y') }} - {{ optional($finCobro)->format('d/m/Y') }}</td></tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="top-table">
-        <tr>
-            <td style="width: 50%; padding-right: 16px;">
-                <p class="section-title">Facturar a</p>
-                <div>{{ $factura->socio?->persona?->nombre_completo }}</div>
-                <div>{{ $factura->socio?->direccion ?: 'Direccion pendiente' }}</div>
-                <div>{{ $factura->socio?->sector?->nombre ?: 'Sin sector' }}</div>
-            </td>
-            <td style="width: 50%;">
-                <p class="section-title">Enviar a</p>
-                <div>{{ $factura->socio?->persona?->email ?: 'Correo no registrado' }}</div>
-                <div>{{ $factura->socio?->persona?->telefono ?: 'Telefono no registrado' }}</div>
-                <div>Medidor: {{ $factura->lectura?->medidor?->numero_serie ?: 'Sin medidor' }}</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="reading-table">
-        <thead>
-            <tr>
-                <th>Lectura anterior</th>
-                <th>Lectura actual</th>
-                <th>Consumo m3</th>
-                <th>M3 excedente</th>
-                <th>Tarifa excedente</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>{{ number_format((float) $billingBreakdown['previous_reading'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['current_reading'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['consumed_m3'], 2) }}</td>
-                <td>{{ number_format((float) $billingBreakdown['excess_m3'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_rate'], 2) }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="spacer"></div>
-    <table class="summary-table">
-        <thead>
-            <tr>
-                <th>Cant.</th>
-                <th>Descripcion</th>
-                <th class="text-right">Precio unitario</th>
-                <th class="text-right">Importe</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>1</td>
-                <td>Cargo fijo agua (0 a {{ number_format((float) $billingBreakdown['included_m3'], 0) }} m3)</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['fixed_charge'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['fixed_charge'], 2) }}</td>
-            </tr>
-            <tr>
-                <td>{{ number_format((float) $billingBreakdown['excess_m3'], 2) }}</td>
-                <td>Excedente de consumo</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_rate'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['excess_charge'], 2) }}</td>
-            </tr>
-            <tr>
-                <td>1</td>
-                <td>Cargo fijo alcantarillado</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['sewer_fixed_charge'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['sewer_fixed_charge'], 2) }}</td>
-            </tr>
-            <tr>
-                <td>1</td>
-                <td>Mora por saldo anterior</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['mora_saldo_anterior'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['mora_saldo_anterior'], 2) }}</td>
-            </tr>
-            <tr>
-                <td>1</td>
-                <td>Multa corte / reconexion</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['cutoff_penalty'], 2) }}</td>
-                <td class="text-right">Bs {{ number_format((float) $billingBreakdown['cutoff_penalty'], 2) }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <table class="totals">
-        <tr>
-            <td>Subtotal</td>
-            <td class="text-right">Bs {{ number_format((float) $resumenCobro['subtotal'], 2) }}</td>
-        </tr>
-        <tr>
-            <td>Total pagado</td>
-            <td class="text-right">Bs {{ number_format((float) $resumenCobro['pagado'], 2) }}</td>
-        </tr>
-        <tr>
-            <td>Saldo pendiente</td>
-            <td class="text-right">Bs {{ number_format((float) $resumenCobro['pendiente'], 2) }}</td>
-        </tr>
-    </table>
-
-    <div class="total-box">
-        TOTAL: <span style="float:right;">Bs {{ number_format((float) $factura->total, 2) }}</span>
-    </div>
-
-    <div style="margin-top: 34px;">
-        <p style="color:#2f69b7; font-weight:bold; text-transform:uppercase; letter-spacing:0.08em;">Condiciones y forma de pago</p>
-        <p>El pago puede realizarse en oficinas de {{ $company['company_name'] ?? 'EPSAS' }}. Este documento es un recibo electronico interno y no corresponde a facturacion electronica tributaria.</p>
-    </div>
+    @include('facturas.partials.boleta-epsas')
 </body>
 </html>

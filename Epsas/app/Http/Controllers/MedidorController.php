@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Empleado;
 use App\Models\Medidor;
-use App\Models\Socio;
 use App\Support\OperationalCache;
+use App\Support\SequentialMedidorNumber;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
@@ -13,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -32,6 +32,8 @@ class MedidorController extends Controller
 
         $this->meterPaginator($request, url('/admin/medidores'));
         $this->meterStats();
+        $this->availableSocios();
+        $this->tecnicos();
     }
 
     private function meterPaginator(Request $request, ?string $path = null)
@@ -60,7 +62,7 @@ class MedidorController extends Controller
             ->selectRaw("TRIM(COALESCE(pe.nombres, '') || ' ' || COALESCE(pe.apellidos, '')) as instalador_nombre")
             ->orderByDesc('m.created_at');
 
-        if ($request->filled('buscar')) {
+        if ($request->filled('buscar') && strlen(trim((string) $request->buscar)) >= 2) {
             $term = trim((string) $request->buscar);
 
             $query->where(function ($builder) use ($term) {
@@ -77,10 +79,9 @@ class MedidorController extends Controller
             $query->where('m.estado', $request->estado);
         }
 
-        Cache::add('medidores:index:version', 1, now()->addYears(2));
-        $cacheKey = 'medidores:index:v' . Cache::get('medidores:index:version', 1) . ':' . md5(json_encode($request->query()));
+        $cacheKey = 'medidores.index.'.md5(json_encode($request->query()));
 
-        return Cache::remember($cacheKey, now()->addDays(7), fn () => $query
+        return OperationalCache::rememberDomain('operations', $cacheKey, fn () => $query
             ->simplePaginate(12)
             ->withPath($path ?? url('/admin/medidores'))
             ->appends($request->query())
@@ -117,6 +118,7 @@ class MedidorController extends Controller
         return view('medidores.create', [
             'sociosDisponibles' => $this->availableSocios(),
             'tecnicos' => $this->tecnicos(),
+            'nextNumeroMedidor' => SequentialMedidorNumber::next(),
         ]);
     }
 
@@ -125,21 +127,6 @@ class MedidorController extends Controller
         $this->ensureAdmin();
 
         $data = $this->validateMedidor($request);
-
-        if ($data['estado'] === 'activo') {
-            $medidorActivo = Medidor::query()
-                ->where('id_socio', $data['id_socio'])
-                ->where('estado', 'activo')
-                ->first();
-
-            if ($medidorActivo) {
-                return back()
-                    ->withInput()
-                    ->withErrors([
-                        'id_socio' => "El socio ya tiene un medidor activo ({$medidorActivo->numero_serie}).",
-                    ]);
-            }
-        }
 
         Medidor::create($data);
         $this->flushMeterCaches();
@@ -167,22 +154,6 @@ class MedidorController extends Controller
 
         $data = $this->validateMedidor($request, $medidor);
 
-        if ($data['estado'] === 'activo') {
-            $medidorActivo = Medidor::query()
-                ->where('id_socio', $data['id_socio'])
-                ->where('estado', 'activo')
-                ->where('id_medidor', '!=', $medidor->id_medidor)
-                ->first();
-
-            if ($medidorActivo) {
-                return back()
-                    ->withInput()
-                    ->withErrors([
-                        'id_socio' => "El socio ya tiene un medidor activo ({$medidorActivo->numero_serie}).",
-                    ]);
-            }
-        }
-
         $medidor->update($data);
         $this->flushMeterCaches();
 
@@ -193,50 +164,135 @@ class MedidorController extends Controller
 
     private function validateMedidor(Request $request, ?Medidor $medidor = null): array
     {
-        return $request->validate([
-            'numero_serie' => [
-                'required',
-                'string',
-                'max:60',
-                Rule::unique('medidores', 'numero_serie')->ignore($medidor?->id_medidor, 'id_medidor'),
-            ],
+        if (! $medidor && ! $request->filled('numero_serie')) {
+            $request->merge(['numero_serie' => SequentialMedidorNumber::next()]);
+        }
+
+        $data = $request->validate([
+            'numero_serie' => ['required', 'string', 'max:60'],
             'marca' => ['required', 'string', 'max:80'],
             'modelo' => ['nullable', 'string', 'max:80'],
             'fecha_instalacion' => ['required', 'date'],
+            'latitud' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitud' => ['nullable', 'numeric', 'between:-180,180'],
             'estado' => ['required', Rule::in(['activo', 'inactivo', 'danado', 'reemplazado'])],
-            'id_socio' => ['required', 'integer', 'exists:socios,id_socio'],
-            'id_empleado_instalador' => ['nullable', 'integer', 'exists:empleados,id_empleado'],
+            'id_socio' => ['required', 'integer'],
+            'id_empleado_instalador' => ['nullable', 'integer'],
         ]);
+
+        $this->validateMeterAvailability($data, $medidor);
+
+        return $data;
+    }
+
+    private function validateMeterAvailability(array $data, ?Medidor $medidor = null): void
+    {
+        $messages = [];
+        $socioId = (int) $data['id_socio'];
+        $installerId = isset($data['id_empleado_instalador']) ? (int) $data['id_empleado_instalador'] : null;
+
+        $socioAllowed = $medidor && (int) $medidor->id_socio === $socioId
+            ? true
+            : $this->availableSocios()->contains(fn ($row) => (int) $row->id_socio === $socioId);
+
+        if (! $socioAllowed) {
+            $messages['id_socio'] = 'Selecciona un socio disponible y sin medidor activo.';
+        }
+
+        if ($installerId && ! $this->tecnicos()->contains(fn ($row) => (int) $row->id_empleado === $installerId)) {
+            $messages['id_empleado_instalador'] = 'Selecciona un tecnico activo.';
+        }
+
+        $conflicts = Medidor::query()
+            ->select(['id_medidor', 'numero_serie', 'estado', 'id_socio'])
+            ->when($medidor, fn ($query) => $query->where('id_medidor', '!=', $medidor->id_medidor))
+            ->where(function ($query) use ($data, $socioId) {
+                $query->where('numero_serie', $data['numero_serie'])
+                    ->when($data['estado'] === 'activo', function ($query) use ($socioId) {
+                        $query->orWhere(function ($query) use ($socioId) {
+                            $query->where('id_socio', $socioId)
+                                ->where('estado', 'activo');
+                        });
+                    });
+            })
+            ->limit(2)
+            ->get();
+
+        foreach ($conflicts as $conflict) {
+            if ($conflict->numero_serie === $data['numero_serie']) {
+                $messages['numero_serie'] = 'El numero de serie ya esta registrado.';
+            }
+
+            if ((int) $conflict->id_socio === $socioId && $conflict->estado === 'activo' && $data['estado'] === 'activo') {
+                $messages['id_socio'] = "El socio ya tiene un medidor activo ({$conflict->numero_serie}).";
+            }
+        }
+
+        if ($messages !== []) {
+            throw ValidationException::withMessages($messages);
+        }
     }
 
     private function tecnicos()
     {
-        return Cache::remember('medidores:tecnicos', now()->addMinutes(10), function () {
-            return Empleado::query()
-            ->select(['id_empleado', 'id_persona'])
-            ->with('persona:id_persona,nombres,apellidos')
-            ->where('estado', 'activo')
-            ->whereHas('rol', fn ($rol) => $rol->where('nombre', 'tecnico'))
-            ->orderBy('id_empleado')
-            ->get();
+        return Cache::remember('medidores:tecnicos:v2', now()->addDay(), function () {
+            return DB::table('empleados as e')
+                ->join('personas as p', 'p.id_persona', '=', 'e.id_persona')
+                ->join('roles as r', 'r.id_rol', '=', 'e.id_rol')
+                ->where('e.estado', 'activo')
+                ->whereRaw('LOWER(r.nombre) = ?', ['tecnico'])
+                ->orderBy('p.nombres')
+                ->orderBy('p.apellidos')
+                ->get([
+                    'e.id_empleado',
+                    'e.id_persona',
+                    DB::raw("TRIM(COALESCE(p.nombres, '') || ' ' || COALESCE(p.apellidos, '')) as nombre_completo"),
+                ])
+                ->map(function ($row) {
+                    $row->persona = (object) [
+                        'nombre_completo' => $row->nombre_completo ?: ('Tecnico #'.$row->id_empleado),
+                    ];
+
+                    return $row;
+                });
         });
     }
 
     private function availableSocios()
     {
-        return Cache::remember('medidores:socios-disponibles', now()->addMinutes(5), function () {
-            return Socio::query()
-            ->select(['id_socio', 'numero_socio', 'id_persona'])
-            ->with('persona:id_persona,nombres,apellidos,cedula_identidad')
-            ->whereDoesntHave('medidorActivo')
-            ->orderBy('numero_socio')
-            ->get();
+        return Cache::remember('medidores:socios-disponibles:v3', now()->addDay(), function () {
+            return DB::table('socios as s')
+                ->join('personas as p', 'p.id_persona', '=', 's.id_persona')
+                ->leftJoin('medidores as m', function ($join) {
+                    $join->on('m.id_socio', '=', 's.id_socio')
+                        ->where('m.estado', '=', 'activo');
+                })
+                ->whereNull('m.id_medidor')
+                ->orderBy('s.numero_socio')
+                ->get([
+                    's.id_socio',
+                    's.numero_socio',
+                    's.id_persona',
+                    's.latitud',
+                    's.longitud',
+                    'p.cedula_identidad',
+                    DB::raw("TRIM(COALESCE(p.nombres, '') || ' ' || COALESCE(p.apellidos, '')) as nombre_completo"),
+                ])
+                ->map(function ($row) {
+                    $row->codigo_display = $row->numero_socio ?: ('SOC-'.str_pad((string) $row->id_socio, 4, '0', STR_PAD_LEFT));
+                    $row->persona = (object) [
+                        'nombre_completo' => $row->nombre_completo ?: 'Sin nombre',
+                        'cedula_identidad' => $row->cedula_identidad,
+                    ];
+
+                    return $row;
+                });
         });
     }
 
     private function meterStats(): array
     {
-        return Cache::remember('medidores:stats', now()->addDays(7), function () {
+        return OperationalCache::rememberDomain('operations', 'medidores.stats', function () {
             $summary = Medidor::query()
                 ->selectRaw("
                     COUNT(*) as total,
@@ -257,10 +313,18 @@ class MedidorController extends Controller
 
     private function flushMeterCaches(): void
     {
+        OperationalCache::bumpDomain('operations');
         Cache::forget('medidores:stats');
         Cache::forget('medidores:tecnicos');
+        Cache::forget('medidores:tecnicos:v2');
         Cache::forget('medidores:socios-disponibles');
+        Cache::forget('medidores:socios-disponibles:v2');
+        Cache::forget('medidores:socios-disponibles:v3');
+        SequentialMedidorNumber::forgetCache();
         Cache::forget('lecturas:medidores-disponibles');
+        OperationalCache::forget('lecturas:medidores-disponibles');
+        OperationalCache::forget('lecturas:medidores-disponibles:limit:80');
+        OperationalCache::forget('lecturas:medidores-disponibles-gps:limit:80');
         Cache::forget('tecnico:consumo:catalogo');
         Cache::forget('tecnico:consumo:catalogo:v2');
         Cache::forget('tecnico:consumo:catalogo:v3');
@@ -272,7 +336,14 @@ class MedidorController extends Controller
         Cache::forget('api.dashboard.tecnico');
         Cache::add('medidores:index:version', 1, now()->addYears(2));
         Cache::increment('medidores:index:version');
-        OperationalCache::bump();
+        OperationalCache::forget('consumo:catalogo:legacy');
+        OperationalCache::forget('consumo:stats:'.today()->toDateString());
+        OperationalCache::forget('api-dashboard-tecnico');
+        OperationalCache::forget('mapa-operativo:markers');
+        Cache::add('tecnico:catalog:consumo:medidores:version', 1, now()->addYears(2));
+        Cache::increment('tecnico:catalog:consumo:medidores:version');
+        Cache::add('tecnico:catalog:consumo:medidores-gps:version', 1, now()->addYears(2));
+        Cache::increment('tecnico:catalog:consumo:medidores-gps:version');
     }
 
     private function ensureAdmin(): void

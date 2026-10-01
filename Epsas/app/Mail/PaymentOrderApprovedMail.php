@@ -30,7 +30,6 @@ class PaymentOrderApprovedMail extends Mailable
             view: 'emails.payment-order-approved',
             with: [
                 'orden' => $this->orden,
-                'orderUrl' => route('portal.ordenes.show', [$this->orden, $this->orden->access_token]),
             ],
         );
     }

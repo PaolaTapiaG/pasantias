@@ -104,7 +104,7 @@ CREATE TABLE medidores (
   numero_serie VARCHAR(60) NOT NULL UNIQUE,
   marca VARCHAR(80),
   modelo VARCHAR(80),
-  fecha_instalacion DATE NOT NULL DEFAULT CURRENT_DATE,
+  fecha_instalacion DATE,
   estado VARCHAR(20) NOT NULL DEFAULT 'activo'
     CHECK (estado IN ('activo', 'inactivo', 'danado', 'reemplazado')),
   id_socio BIGINT NOT NULL REFERENCES socios(id_socio),

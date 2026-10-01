@@ -20,15 +20,15 @@
         </header>
 
         <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <form method="POST" action="{{ route('admin.socios.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.socios.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @include('socios._form')
 
-                <div class="flex justify-end gap-3">
-                    <a href="{{ route('admin.socios.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                <div class="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
+                    <a href="{{ route('admin.socios.index') }}" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto">
                         Cancelar
                     </a>
-                    <button class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+                    <button class="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto">
                         Guardar socio
                     </button>
                 </div>

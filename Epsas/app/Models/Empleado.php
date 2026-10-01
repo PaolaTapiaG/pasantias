@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CachesOperationalRouteBinding;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Empleado extends Model
 {
-    use HasFactory;
+    use CachesOperationalRouteBinding, HasFactory;
 
     protected $table = 'empleados';
     protected $primaryKey = 'id_empleado';
@@ -18,10 +20,16 @@ class Empleado extends Model
         'estado',
         'id_persona',
         'id_rol',
+        'salario_base',
+        'bono_mensual',
+        'aguinaldo_anual',
     ];
 
     protected $casts = [
         'fecha_ingreso' => 'date',
+        'salario_base' => 'decimal:2',
+        'bono_mensual' => 'decimal:2',
+        'aguinaldo_anual' => 'decimal:2',
         'creado_en'     => 'datetime',
     ];
 
@@ -34,7 +42,7 @@ class Empleado extends Model
 
     public function rol()
     {
-        return $this->belongsTo(Rol::class, 'id_rol');
+        return $this->belongsTo(EmployeeRole::class, 'id_rol');
     }
 
     public function cobros()
@@ -50,6 +58,11 @@ class Empleado extends Model
     public function medidoresInstalados()
     {
         return $this->hasMany(Medidor::class, 'id_empleado_instalador');
+    }
+
+    public function gastos(): HasMany
+    {
+        return $this->hasMany(Gasto::class, 'id_empleado', 'id_empleado');
     }
 
     public function user(): HasOneThrough

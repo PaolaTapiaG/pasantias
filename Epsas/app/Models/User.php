@@ -3,9 +3,10 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Auth\CachedEloquentUserProvider;
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -70,7 +71,7 @@ class User extends Authenticatable
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'role_user', 'user_id', 'user_roles_id');
+        return $this->belongsToMany(AccessRole::class, 'role_user', 'user_id', 'user_roles_id');
     }
 
     /**
@@ -110,10 +111,7 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
-        return $this->roles()
-            ->whereHas('permissions', function ($query) use ($permission) {
-                $query->where('name', $permission);
-            })->exists();
+        return $this->cachedPermissionNames()->contains($permission);
     }
 
     /**
@@ -122,10 +120,10 @@ class User extends Authenticatable
     public function assignRole($role): void
     {
         if (is_string($role)) {
-            $role = Role::where('name', $role)->firstOrFail();
+            $role = AccessRole::where('name', $role)->firstOrFail();
         }
 
-        if (!$this->roles()->where('user_roles.id', $role->id)->exists()) {
+        if (! $this->roles()->where('user_roles.id', $role->id)->exists()) {
             $this->roles()->attach($role);
         }
     }
@@ -136,7 +134,7 @@ class User extends Authenticatable
     public function removeRole($role): void
     {
         if (is_string($role)) {
-            $role = Role::where('name', $role)->firstOrFail();
+            $role = AccessRole::where('name', $role)->firstOrFail();
         }
         $this->roles()->detach($role);
     }
@@ -146,13 +144,36 @@ class User extends Authenticatable
         return Cache::remember(
             "user:{$this->getKey()}:role-names",
             now()->addMinutes((int) config('auth.user_cache_minutes', 1440)),
-            fn() => $this->roles()->pluck('name')
+            fn () => $this->roles()->pluck('name')
+        );
+    }
+
+    public function cachedPermissionNames()
+    {
+        return Cache::remember(
+            "user:{$this->getKey()}:permission-names",
+            now()->addMinutes((int) config('auth.user_cache_minutes', 1440)),
+            fn () => $this->roles()
+                ->with('permissions:id,name')
+                ->get()
+                ->flatMap(fn (AccessRole $role) => $role->permissions->pluck('name'))
+                ->unique()
+                ->values()
         );
     }
 
     public function flushAuthCache(): void
     {
-        Cache::forget('auth:user:' . str_replace('\\', '.', static::class) . ':' . $this->getAuthIdentifier());
+        Cache::forget('auth:user:'.str_replace('\\', '.', static::class).':'.$this->getAuthIdentifier());
         Cache::forget("user:{$this->getKey()}:role-names");
+        Cache::forget("user:{$this->getKey()}:permission-names");
+
+        if ($this->email) {
+            Cache::forget(CachedEloquentUserProvider::credentialCacheKey(['email' => mb_strtolower($this->email)]));
+        }
+
+        if ($this->username) {
+            Cache::forget(CachedEloquentUserProvider::credentialCacheKey(['username' => mb_strtolower($this->username)]));
+        }
     }
 }
