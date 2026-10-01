@@ -6,7 +6,7 @@ After=network.target redis-server.service
 User=www-data
 Group=www-data
 Restart=always
-WorkingDirectory=/var/www/epsas/current
+WorkingDirectory=/var/www/epsa-elportillo/Epsas
 ExecStart=/usr/bin/php artisan queue:work redis --sleep=1 --tries=3 --timeout=120 --max-time=3600
 StandardOutput=journal
 StandardError=journal
