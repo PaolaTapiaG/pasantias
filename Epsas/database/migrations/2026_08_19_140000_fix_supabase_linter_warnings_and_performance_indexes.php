@@ -124,7 +124,7 @@ AS $$
 $$;
 
 CREATE TABLE IF NOT EXISTS public.tenants (
-    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     config JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -464,7 +464,7 @@ END;
 $$;
 
 CREATE TABLE IF NOT EXISTS public.tenant_config (
-    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     tenant_id UUID NOT NULL DEFAULT public.epsas_current_tenant_id(),
     config_key TEXT NOT NULL,
     config_value JSONB NOT NULL DEFAULT '{}'::jsonb,
