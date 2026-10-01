@@ -80,10 +80,24 @@ CREATE TABLE empleados (
     CHECK (estado IN ('activo', 'inactivo', 'suspendido')),
   id_persona BIGINT NOT NULL UNIQUE REFERENCES personas(id_persona),
   id_rol BIGINT NOT NULL REFERENCES roles(id_rol),
-  user_id UUID REFERENCES auth.users(id),
+  user_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'auth' AND table_name = 'users'
+  ) THEN
+    ALTER TABLE empleados
+      ADD CONSTRAINT empleados_user_id_fkey
+      FOREIGN KEY (user_id) REFERENCES auth.users(id);
+  END IF;
+END;
+$$;
 
 CREATE TABLE socios (
   id_socio BIGSERIAL PRIMARY KEY,
