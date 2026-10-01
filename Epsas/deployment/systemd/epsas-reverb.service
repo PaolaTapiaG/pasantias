@@ -1,0 +1,18 @@
+[Unit]
+Description=EPSAS Laravel Reverb WebSocket Server
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+WorkingDirectory=/var/www/epsa-elportillo/Epsas
+ExecStart=/usr/bin/php artisan reverb:start --host=0.0.0.0 --port=8080
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
