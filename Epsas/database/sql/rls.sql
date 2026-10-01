@@ -57,10 +57,10 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM (SELECT get_mi_rol() AS rol) current_role
-    WHERE current_role.rol = ANY(p_roles)
-       OR (current_role.rol = 'administrador' AND 'admin' = ANY(p_roles))
-       OR (current_role.rol = 'admin' AND 'administrador' = ANY(p_roles))
+     FROM (SELECT get_mi_rol() AS rol) active_role
+     WHERE active_role.rol = ANY(p_roles)
+       OR (active_role.rol = 'administrador' AND 'admin' = ANY(p_roles))
+       OR (active_role.rol = 'admin' AND 'administrador' = ANY(p_roles))
   );
 $$;
 
